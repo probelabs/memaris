@@ -28,7 +28,8 @@
     "build:types": "tsc --project tsconfig.build.json",
     "dev": "bun run src/cli/index.ts",
     "test": "bun test",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "deploy:site": "cd site && npx wrangler pages deploy . --project-name=probelabs-site --commit-dirty=true"
   },
   "keywords": [
     "claude-code",

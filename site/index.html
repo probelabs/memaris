@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mnemaris - Memory for AI Conversations</title>
+    <meta name="description" content="Transform your Claude Code conversations into actionable insights. Learn from every interaction, avoid past mistakes, and build better with AI.">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --cosmic-dark: #0a0e27;
+            --nebula-purple: #6b46c1;
+            --memory-blue: #2563eb;
+            --neural-cyan: #06b6d4;
+            --insight-gold: #f59e0b;
+            --success-green: #10b981;
+            --error-red: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --grid-color: rgba(107, 70, 193, 0.1);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(107, 70, 193, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(107, 70, 193, 0.6); }
+        }
+
+        @keyframes neural-flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -100; }
+        }
+
+        @keyframes memory-fade {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--cosmic-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Neural Network Background */
+        .neural-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .neural-bg svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .neural-path {
+            stroke: var(--nebula-purple);
+            stroke-width: 0.5;
+            fill: none;
+            stroke-dasharray: 5, 10;
+            animation: neural-flow 20s linear infinite;
+        }
+
+        /* Memory Grid */
+        .memory-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -2;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        /* Header */
+        header {
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: inline-block;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .logo-symbol {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            position: relative;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        .memory-core {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--nebula-purple), var(--memory-blue));
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .memory-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--neural-cyan);
+            border-radius: 50%;
+            animation: float 4s ease-in-out infinite reverse;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            background: linear-gradient(135deg, var(--nebula-purple), var(--neural-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-text {
+            font-size: 2rem;
+            line-height: 1.6;
+            margin-bottom: 3rem;
+            font-weight: 200;
+            animation: memory-fade 1s ease-out;
+        }
+
+        .hero-text .highlight {
+            color: var(--insight-gold);
+            font-weight: 400;
+        }
+
+        /* Memory Visualization */
+        .memory-viz {
+            margin: 4rem auto;
+            max-width: 800px;
+            padding: 3rem;
+            background: rgba(107, 70, 193, 0.05);
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .memory-stream {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            padding: 1rem 0;
+        }
+
+        .memory-fragment {
+            min-width: 150px;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(107, 70, 193, 0.1), rgba(37, 99, 235, 0.1));
+            border: 1px solid rgba(107, 70, 193, 0.3);
+            border-radius: 10px;
+            animation: memory-fade 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .memory-fragment:nth-child(1) { animation-delay: 0.1s; }
+        .memory-fragment:nth-child(2) { animation-delay: 0.2s; }
+        .memory-fragment:nth-child(3) { animation-delay: 0.3s; }
+        .memory-fragment:nth-child(4) { animation-delay: 0.4s; }
+
+        .fragment-type {
+            font-size: 0.8rem;
+            color: var(--neural-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .fragment-content {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Features */
+        .features {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background: rgba(107, 70, 193, 0.05);
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(107, 70, 193, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--nebula-purple);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--neural-cyan);
+        }
+
+        .feature-desc {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Terminal Demo */
+        .terminal {
+            max-width: 800px;
+            margin: 4rem auto;
+            background: #0a0a0a;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            background: #1a1a1a;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: var(--error-red); }
+        .terminal-dot.yellow { background: var(--insight-gold); }
+        .terminal-dot.green { background: var(--success-green); }
+
+        .terminal-body {
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .terminal-line {
+            margin-bottom: 0.5rem;
+            opacity: 0;
+            animation: memory-fade 0.5s ease-out forwards;
+        }
+
+        .terminal-line:nth-child(1) { animation-delay: 0.5s; }
+        .terminal-line:nth-child(2) { animation-delay: 1s; }
+        .terminal-line:nth-child(3) { animation-delay: 1.5s; }
+        .terminal-line:nth-child(4) { animation-delay: 2s; }
+        .terminal-line:nth-child(5) { animation-delay: 2.5s; }
+        .terminal-line:nth-child(6) { animation-delay: 3s; }
+
+        .terminal-prompt { color: var(--success-green); }
+        .terminal-command { color: var(--text-primary); }
+        .terminal-output { color: var(--text-secondary); }
+        .terminal-highlight { color: var(--insight-gold); }
+
+        /* Story Section */
+        .story {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .story-title {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--insight-gold), var(--nebula-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .story-content {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .story-quote {
+            font-size: 1.4rem;
+            font-style: italic;
+            color: var(--neural-cyan);
+            margin: 3rem 0;
+            padding: 2rem;
+            border-left: 3px solid var(--nebula-purple);
+            background: rgba(107, 70, 193, 0.05);
+            text-align: left;
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 6rem 2rem;
+            text-align: center;
+            background: linear-gradient(180deg, transparent, rgba(107, 70, 193, 0.1));
+        }
+
+        .cta-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--nebula-purple), var(--memory-blue));
+            color: white;
+            box-shadow: 0 10px 30px rgba(107, 70, 193, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(107, 70, 193, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--neural-cyan);
+            border: 2px solid var(--neural-cyan);
+        }
+
+        .btn-secondary:hover {
+            background: var(--neural-cyan);
+            color: var(--cosmic-dark);
+        }
+
+        /* Installation */
+        .install-command {
+            display: inline-block;
+            background: #1a1a1a;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 2rem 0;
+            border: 1px solid rgba(107, 70, 193, 0.3);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .install-command:hover {
+            border-color: var(--nebula-purple);
+            background: rgba(107, 70, 193, 0.1);
+        }
+
+        .copy-hint {
+            position: absolute;
+            top: -30px;
+            right: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .install-command:hover .copy-hint {
+            opacity: 1;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(107, 70, 193, 0.2);
+            margin-top: 4rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--neural-cyan);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .hero-text { font-size: 1.5rem; }
+            .story-title { font-size: 1.8rem; }
+            .cta-title { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Neural Network Background -->
+    <div class="neural-bg">
+        <svg>
+            <defs>
+                <pattern id="neural-pattern" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+                    <path class="neural-path" d="M0,100 Q50,50 100,100 T200,100" />
+                    <path class="neural-path" d="M0,50 Q50,100 100,50 T200,50" />
+                    <path class="neural-path" d="M50,0 Q100,50 150,0 T200,0" />
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#neural-pattern)" />
+        </svg>
+    </div>
+
+    <!-- Memory Grid -->
+    <div class="memory-grid"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <div class="logo-symbol">
+                <div class="memory-core">M</div>
+                <div class="memory-ring"></div>
+            </div>
+        </div>
+        <h1>MNEMARIS</h1>
+        <p class="tagline">Memory-Driven Intelligence for Every Conversation</p>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-text">
+            Your AI conversations are <span class="highlight">goldmines of insight</span>.<br>
+            Every mistake, every success, every pattern—<br>
+            waiting to make your next session <span class="highlight">extraordinary</span>.
+        </div>
+
+        <!-- Memory Visualization -->
+        <div class="memory-viz">
+            <h3 style="margin-bottom: 2rem; color: var(--neural-cyan);">Living Memory in Action</h3>
+            <div class="memory-stream">
+                <div class="memory-fragment">
+                    <div class="fragment-type">Mistake Pattern</div>
+                    <div class="fragment-content">Avoid using fs.readFile, prefer Bun.file</div>
+                </div>
+                <div class="memory-fragment">
+                    <div class="fragment-type">Success Pattern</div>
+                    <div class="fragment-content">Parallel tool calls reduce latency by 60%</div>
+                </div>
+                <div class="memory-fragment">
+                    <div class="fragment-type">User Preference</div>
+                    <div class="fragment-content">Prefers concise responses without preamble</div>
+                </div>
+                <div class="memory-fragment">
+                    <div class="fragment-type">Environment</div>
+                    <div class="fragment-content">macOS, Bun runtime, TypeScript projects</div>
+                </div>
+            </div>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                Each session teaches. Mnemaris remembers. Your AI evolves.
+            </p>
+        </div>
+    </section>
+
+    <!-- Story Section -->
+    <section class="story">
+        <h2 class="story-title">Every Conversation Tells a Story</h2>
+        <div class="story-content">
+            <p>
+                In the vast cosmos of AI interactions, each conversation leaves traces—patterns 
+                of success, echoes of confusion, moments of breakthrough. These memories scatter 
+                like stardust, forgotten the moment a session ends.
+            </p>
+            <div class="story-quote">
+                "What if your AI could remember every lesson learned, every mistake avoided, 
+                every preference discovered? What if it could start each session knowing you 
+                better than the last?"
+            </div>
+            <p>
+                Mnemaris captures these fleeting insights and transforms them into persistent 
+                memory. It's not just about analyzing conversations—it's about building a 
+                cognitive bridge between every interaction, creating an AI experience that 
+                truly evolves with you.
+            </p>
+        </div>
+    </section>
+
+    <!-- Terminal Demo -->
+    <section style="padding: 2rem;">
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+            </div>
+            <div class="terminal-body">
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-command">mnemaris analyze --ai-powered</span>
+                </div>
+                <div class="terminal-line terminal-output">
+                    🧠 Starting conversation analysis...
+                </div>
+                <div class="terminal-line terminal-output">
+                    📊 Found 47 conversation sessions
+                </div>
+                <div class="terminal-line terminal-output">
+                    🔍 Analyzing 2,341 messages...
+                </div>
+                <div class="terminal-line terminal-highlight">
+                    ❌ Mistakes to avoid: 12 patterns identified
+                </div>
+                <div class="terminal-line terminal-highlight">
+                    ✅ Successful patterns: 28 strategies found
+                </div>
+                <div class="terminal-line terminal-output">
+                    💡 Recommendations updated in CLAUDE.md
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 1rem;">
+            Transform Conversations into Wisdom
+        </h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">Smart Project Detection</h3>
+                <p class="feature-desc">
+                    Automatically discovers your Claude Code conversations. No configuration 
+                    needed—just run in your project directory and watch the magic happen.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧬</div>
+                <h3 class="feature-title">Pattern Recognition</h3>
+                <p class="feature-desc">
+                    Identifies recurring mistakes, successful approaches, and behavioral patterns. 
+                    Learn what works and what doesn't across hundreds of interactions.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔮</div>
+                <h3 class="feature-title">AI-Powered Analysis</h3>
+                <p class="feature-desc">
+                    Uses Claude's own intelligence to analyze conversations. Deep contextual 
+                    understanding that goes beyond simple pattern matching.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💫</div>
+                <h3 class="feature-title">Memory Profiles</h3>
+                <p class="feature-desc">
+                    Creates persistent profiles of your coding style, preferences, and environment. 
+                    Your AI assistant starts each session already knowing you.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">CLAUDE.md Integration</h3>
+                <p class="feature-desc">
+                    Automatically updates your project's CLAUDE.md with insights and recommendations. 
+                    Your AI reads these before every session.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3 class="feature-title">Session Filtering</h3>
+                <p class="feature-desc">
+                    Intelligently filters out noise, focusing on meaningful conversations. 
+                    Quality insights from quality data.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2 class="cta-title">Begin Your Memory Journey</h2>
+        <p class="cta-subtitle">Turn every AI conversation into a stepping stone toward perfection</p>
+        
+        <div class="install-command" onclick="copyCommand()">
+            <span class="copy-hint">Click to copy</span>
+            <code>npm install -g @probelabs/mnemaris</code>
+        </div>
+
+        <div class="cta-buttons">
+            <a href="https://github.com/probelabs/mnemaris" class="btn btn-primary">
+                <span>🚀</span> View on GitHub
+            </a>
+            <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-secondary">
+                <span>📦</span> NPM Package
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/probelabs/mnemaris">GitHub</a>
+            <a href="https://www.npmjs.com/package/@probelabs/mnemaris">NPM</a>
+            <a href="https://probelabs.com">ProbeLabsIO</a>
+            <a href="https://github.com/probelabs/mnemaris/issues">Support</a>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+            Mnemaris • From μνήμη (mneme) - memory • Built with 💜 by ProbeLabsIO
+        </p>
+    </footer>
+
+    <script>
+        // Copy install command
+        function copyCommand() {
+            const command = 'npm install -g @probelabs/mnemaris';
+            navigator.clipboard.writeText(command).then(() => {
+                const hint = document.querySelector('.copy-hint');
+                hint.textContent = 'Copied!';
+                hint.style.color = 'var(--success-green)';
+                setTimeout(() => {
+                    hint.textContent = 'Click to copy';
+                    hint.style.color = 'var(--text-secondary)';
+                }, 2000);
+            });
+        }
+
+        // Add floating animation to memory fragments on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'memory-fade 0.5s ease-out forwards';
+                }
+            });
+        });
+
+        document.querySelectorAll('.memory-fragment').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Neural network animation on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            const neuralBg = document.querySelector('.neural-bg');
+            if (neuralBg) {
+                neuralBg.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
+            }
+            
+            const memoryGrid = document.querySelector('.memory-grid');
+            if (memoryGrid) {
+                memoryGrid.style.transform = `translate(${-x * 5}px, ${-y * 5}px)`;
+            }
+        });
+
+        // Typing effect for hero text
+        const heroText = document.querySelector('.hero-text');
+        if (heroText) {
+            const text = heroText.innerHTML;
+            heroText.innerHTML = '';
+            heroText.style.opacity = '1';
+            
+            let index = 0;
+            const typeWriter = () => {
+                if (index < text.length) {
+                    heroText.innerHTML = text.slice(0, index + 1);
+                    index++;
+                    setTimeout(typeWriter, 20);
+                }
+            };
+            
+            setTimeout(typeWriter, 500);
+        }
+    </script>
+</body>
+</html>

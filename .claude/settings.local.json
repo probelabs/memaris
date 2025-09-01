@@ -43,7 +43,12 @@
       "Bash(mnemaris:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(/Users/leonidbugaev/go/src/vow/**)",
+      "Read(/Users/leonidbugaev/go/src/vow/site/**)",
+      "Read(/Users/leonidbugaev/go/src/vow/site/**)",
+      "Bash(npx wrangler pages deploy:*)",
+      "Bash(npx wrangler pages project create:*)"
     ],
     "deny": [],
     "ask": []
