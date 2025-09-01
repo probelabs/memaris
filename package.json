@@ -1,0 +1,68 @@
+{
+  "name": "@probelabs/mnemaris",
+  "version": "0.1.0",
+  "description": "A memory-driven analysis tool for Claude Code conversations. Extract insights and improve future AI sessions.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "mnemaris": "dist/cli.js"
+  },
+  "type": "module",
+  "private": false,
+  "homepage": "https://probelabs.com/mnemaris/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/probelabs/mnemaris.git"
+  },
+  "bugs": {
+    "url": "https://github.com/probelabs/mnemaris/issues"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "bun build --target=node ./src/index.ts --outfile=dist/index.js && bun build --target=node ./src/cli/index.ts --outfile=dist/cli.js && bun run build:types",
+    "build:types": "tsc --project tsconfig.build.json",
+    "dev": "bun run src/cli/index.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "claude-code",
+    "conversation-analysis",
+    "ai-insights",
+    "memory-analysis",
+    "pattern-detection",
+    "ai-memory",
+    "chat-history",
+    "developer-tools",
+    "claude",
+    "anthropic",
+    "ai-tools",
+    "productivity"
+  ],
+  "author": "ProbeLabsIO",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "latest",
+    "@types/cli-progress": "^3.11.6",
+    "cli-progress": "^3.12.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
