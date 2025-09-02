@@ -3,336 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mnemaris - Your AI's memory, made from your own conversations</title>
-    <meta name="description" content="Stop re-teaching your AI. Turn past sessions into a portable playbook your agents actually follow. Reads Claude Code, adapts to OpenAI Codex and Google Gemini.">
-    
+    <title>Mnemaris - Stop re-teaching your AI</title>
+    <meta name="description" content="Turn past sessions into a portable playbook your agents actually follow. Reads Claude Code, adapts to OpenAI Codex and Google Gemini.">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            cursor: none !important;
         }
 
         :root {
-            --cosmic-dark: #0a0e27;
-            --nebula-purple: #6b46c1;
-            --memory-blue: #2563eb;
-            --neural-cyan: #06b6d4;
-            --insight-gold: #f59e0b;
-            --success-green: #10b981;
-            --error-red: #ef4444;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --grid-color: rgba(107, 70, 193, 0.1);
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(107, 70, 193, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(107, 70, 193, 0.6); }
-        }
-
-        @keyframes neural-flow {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -100; }
-        }
-
-        @keyframes memory-fade {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes typing {
-            from { width: 0; }
-            to { width: 100%; }
+            --bg: #0a0a0a;
+            --text: #ffffff;
+            --accent: #00ff88;
+            --error: #ff0066;
+            --warning: #ffaa00;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--cosmic-dark);
-            color: var(--text-primary);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            background: var(--bg);
+            color: var(--text);
             overflow-x: hidden;
-            position: relative;
+            cursor: none !important;
+        }
+
+        a, button, input, textarea, select {
+            cursor: none !important;
+        }
+
+        /* Custom Cursor */
+        .cursor-dot {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            will-change: transform;
+        }
+
+        .cursor-ring {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: border-color 0.2s, width 0.2s, height 0.2s;
+            will-change: transform;
+        }
+
+        .cursor-ring.hover {
+            width: 40px;
+            height: 40px;
+            border-color: var(--error);
+        }
+
+        /* Memory Field Background */
+        .memory-field {
+            position: absolute;
+            width: 100%;
+            height: 100%;
             min-height: 100vh;
-        }
-
-        /* Neural Network Background */
-        .neural-bg {
-            position: fixed;
+            pointer-events: none;
+            z-index: 1;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            opacity: 0.4;
         }
 
-        .neural-bg svg {
-            width: 100%;
-            height: 100%;
-        }
-
-        .neural-path {
-            stroke: var(--nebula-purple);
-            stroke-width: 0.5;
-            fill: none;
-            stroke-dasharray: 5, 10;
-            animation: neural-flow 20s linear infinite;
-        }
-
-        /* Memory Grid */
-        .memory-grid {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(var(--grid-color) 1px, transparent 1px),
-                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: -2;
-            animation: float 20s ease-in-out infinite;
-        }
-
-        /* Header */
-        header {
-            padding: 2rem;
-            text-align: center;
-            position: relative;
-            z-index: 10;
-        }
-
-        .logo {
-            display: inline-block;
-            position: relative;
-            margin-bottom: 1rem;
-        }
-
-        .logo-symbol {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto;
-            position: relative;
-            animation: pulse-glow 3s ease-in-out infinite;
-        }
-
-        .memory-core {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--nebula-purple), var(--memory-blue));
-            border-radius: 50%;
+        .memory-particle {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 11px;
+            color: var(--accent);
+            opacity: 0.25;
+            animation: float 30s infinite linear;
+            font-family: monospace;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
 
-        .memory-ring {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 80px;
-            height: 80px;
-            border: 2px solid var(--neural-cyan);
-            border-radius: 50%;
-            animation: float 4s ease-in-out infinite reverse;
+        .memory-particle.dim {
+            opacity: 0.15;
+            text-shadow: none;
         }
 
-        h1 {
-            font-size: 3rem;
-            font-weight: 300;
-            letter-spacing: 0.1em;
-            background: linear-gradient(135deg, var(--nebula-purple), var(--neural-cyan));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+        .memory-particle.bright {
+            opacity: 0.35;
+            text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+            animation-duration: 25s;
         }
 
-        .tagline {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            font-weight: 300;
-            letter-spacing: 0.05em;
+        @keyframes float {
+            0% {
+                transform: translateY(0vh) translateX(0) rotate(-5deg);
+            }
+            100% {
+                transform: translateY(-120vh) translateX(50px) rotate(5deg);
+            }
         }
 
         /* Hero Section */
         .hero {
-            padding: 4rem 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+            padding: 3rem 2rem 2rem;
+        }
+
+        .glitch-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 10vw, 8rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
             text-align: center;
             position: relative;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, var(--accent), var(--text));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .hero-text {
-            font-size: 2rem;
-            line-height: 1.6;
-            margin-bottom: 3rem;
-            font-weight: 200;
-            animation: memory-fade 1s ease-out;
+        h1::before,
+        h1::after {
+            content: 'MNEMARIS';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+            -webkit-text-fill-color: transparent;
         }
 
-        .hero-text .highlight {
-            color: var(--insight-gold);
-            font-weight: 400;
+        h1::before {
+            animation: glitch-1 0.5s infinite;
+            color: var(--error);
+            z-index: -1;
+            -webkit-text-fill-color: var(--error);
         }
 
-        /* Memory Visualization */
-        .memory-viz {
-            margin: 4rem auto;
-            max-width: 800px;
-            padding: 3rem;
-            background: rgba(107, 70, 193, 0.05);
-            border: 1px solid rgba(107, 70, 193, 0.2);
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
+        h1::after {
+            animation: glitch-2 0.5s infinite;
+            color: var(--accent);
+            z-index: -1;
+            -webkit-text-fill-color: var(--accent);
         }
 
-        .memory-stream {
+        @keyframes glitch-1 {
+            0%, 100% {
+                clip-path: inset(0 0 0 0);
+                transform: translate(0);
+            }
+            20% {
+                clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+                transform: translate(-3px, 2px);
+            }
+        }
+
+        @keyframes glitch-2 {
+            0%, 100% {
+                clip-path: inset(0 0 0 0);
+                transform: translate(0);
+            }
+            20% {
+                clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+                transform: translate(3px, -2px);
+            }
+        }
+
+        .tagline {
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 300;
+            opacity: 0.9;
+            letter-spacing: 0.1em;
+            max-width: 700px;
+        }
+
+        .tagline .highlight {
+            color: var(--accent);
+            font-weight: 700;
+            animation: pulse 2s infinite;
+            text-transform: uppercase;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* CTA Buttons */
+        .cta-group {
             display: flex;
             gap: 1rem;
-            margin-bottom: 2rem;
-            overflow-x: auto;
-            padding: 1rem 0;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 2rem 0;
         }
 
-        .memory-fragment {
-            min-width: 150px;
-            padding: 1rem;
-            background: linear-gradient(135deg, rgba(107, 70, 193, 0.1), rgba(37, 99, 235, 0.1));
-            border: 1px solid rgba(107, 70, 193, 0.3);
-            border-radius: 10px;
-            animation: memory-fade 0.5s ease-out;
-            animation-fill-mode: both;
-        }
-
-        .memory-fragment:nth-child(1) { animation-delay: 0.1s; }
-        .memory-fragment:nth-child(2) { animation-delay: 0.2s; }
-        .memory-fragment:nth-child(3) { animation-delay: 0.3s; }
-        .memory-fragment:nth-child(4) { animation-delay: 0.4s; }
-
-        .fragment-type {
-            font-size: 0.8rem;
-            color: var(--neural-cyan);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.5rem;
-        }
-
-        .fragment-content {
+        .btn {
+            padding: 0.9rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
             font-size: 0.9rem;
-            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 2px solid transparent;
         }
 
-        /* Features */
-        .features {
-            padding: 4rem 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
         }
 
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
         }
 
-        .feature-card {
-            padding: 2rem;
-            background: rgba(107, 70, 193, 0.05);
-            border: 1px solid rgba(107, 70, 193, 0.2);
-            border-radius: 15px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
         }
 
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(107, 70, 193, 0.1) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        .btn-secondary:hover {
+            background: var(--accent);
+            color: var(--bg);
         }
 
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--nebula-purple);
-        }
-
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .feature-title {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            color: var(--neural-cyan);
-        }
-
-        .feature-desc {
-            color: var(--text-secondary);
-            line-height: 1.6;
+        .micro-assurance {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            text-align: center;
+            margin-top: 1rem;
         }
 
         /* Terminal Demo */
+        .terminal-container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 3rem;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
         .terminal {
-            max-width: 800px;
-            margin: 4rem auto;
-            background: #0a0a0a;
-            border-radius: 10px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            backdrop-filter: blur(20px);
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 255, 136, 0.1);
         }
 
         .terminal-header {
-            background: #1a1a1a;
-            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.8rem 1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            border-bottom: 1px solid var(--border);
         }
 
         .terminal-dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
+            transition: transform 0.2s;
         }
 
-        .terminal-dot.red { background: var(--error-red); }
-        .terminal-dot.yellow { background: var(--insight-gold); }
-        .terminal-dot.green { background: var(--success-green); }
+        .terminal-dot:hover {
+            transform: scale(1.2);
+        }
+
+        .terminal-dot.red { background: var(--error); }
+        .terminal-dot.yellow { background: var(--warning); }
+        .terminal-dot.green { background: var(--accent); }
 
         .terminal-body {
             padding: 1.5rem;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            min-height: 200px;
         }
 
         .terminal-line {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
             opacity: 0;
-            animation: memory-fade 0.5s ease-out forwards;
+            animation: fadeInLine 0.5s forwards;
         }
 
         .terminal-line:nth-child(1) { animation-delay: 0.5s; }
@@ -340,12 +325,37 @@
         .terminal-line:nth-child(3) { animation-delay: 1.5s; }
         .terminal-line:nth-child(4) { animation-delay: 2s; }
         .terminal-line:nth-child(5) { animation-delay: 2.5s; }
-        .terminal-line:nth-child(6) { animation-delay: 3s; }
 
-        .terminal-prompt { color: var(--success-green); }
-        .terminal-command { color: var(--text-primary); }
-        .terminal-output { color: var(--text-secondary); }
-        .terminal-highlight { color: var(--insight-gold); }
+        @keyframes fadeInLine {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .terminal-prompt {
+            color: var(--accent);
+            margin-right: 0.5rem;
+        }
+
+        .terminal-output {
+            color: rgba(255, 255, 255, 0.7);
+            margin-left: 1.5rem;
+        }
+
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--accent);
+            animation: blink 1s infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
 
         /* Story Section */
         .story {
@@ -355,369 +365,424 @@
             text-align: center;
         }
 
-        .story-title {
-            font-size: 2.5rem;
+        .story h2 {
+            font-size: clamp(2rem, 5vw, 3rem);
             margin-bottom: 2rem;
-            background: linear-gradient(135deg, var(--insight-gold), var(--nebula-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
         .story-content {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             line-height: 1.8;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
+            opacity: 0.9;
         }
 
-        .story-quote {
-            font-size: 1.4rem;
-            font-style: italic;
-            color: var(--neural-cyan);
-            margin: 3rem 0;
-            padding: 2rem;
-            border-left: 3px solid var(--nebula-purple);
-            background: rgba(107, 70, 193, 0.05);
-            text-align: left;
+        .story-content p {
+            margin-bottom: 1.5rem;
         }
 
         .story-highlight {
-            color: var(--insight-gold);
-            font-weight: 600;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Evolution Stream */
+        .evolution-stream {
+            position: relative;
+            padding: 3rem 0;
+            overflow: hidden;
+            background: linear-gradient(180deg, transparent, rgba(0, 255, 136, 0.02), transparent);
+        }
+
+        .stream-title {
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        .evolution-path {
+            position: relative;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .evolution-timeline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .evolution-timeline::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--accent) 10%, 
+                var(--accent) 90%, 
+                transparent);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .evolution-node {
+            position: relative;
+            width: 200px;
+            padding: 1.5rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .evolution-node::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--bg);
+            border: 3px solid var(--accent);
+            border-radius: 50%;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+
+        .evolution-node:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent);
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3);
+        }
+
+        .node-number {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 35px;
+            height: 35px;
+            background: var(--error);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.2rem;
+            color: var(--bg);
+            z-index: 3;
+        }
+
+        .node-title {
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .node-detail {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            line-height: 1.4;
         }
 
         /* Compatibility Section */
         .compatibility {
             padding: 4rem 2rem;
-            max-width: 1000px;
-            margin: 0 auto;
             text-align: center;
-        }
-
-        .compatibility h2 {
-            font-size: 2.5rem;
-            margin-bottom: 3rem;
-            background: linear-gradient(135deg, var(--neural-cyan), var(--nebula-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
         }
 
         .compat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 2rem;
-            margin-bottom: 3rem;
+            max-width: 900px;
+            margin: 0 auto 3rem;
         }
 
         .compat-card {
             padding: 2rem;
-            background: rgba(107, 70, 193, 0.05);
-            border: 1px solid rgba(107, 70, 193, 0.2);
-            border-radius: 15px;
-            text-align: left;
-            transition: all 0.3s ease;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
         }
 
         .compat-card:hover {
             transform: translateY(-5px);
-            border-color: var(--nebula-purple);
+            border-color: var(--accent);
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.2);
         }
 
         .compat-status {
             display: inline-block;
-            padding: 0.4rem 1rem;
+            padding: 0.3rem 0.8rem;
             border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.7rem;
+            font-weight: 700;
             margin-bottom: 1rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
         }
 
         .compat-status.live {
-            background: var(--success-green);
-            color: var(--cosmic-dark);
+            background: var(--accent);
+            color: var(--bg);
         }
 
         .compat-status.coming {
-            background: var(--insight-gold);
-            color: var(--cosmic-dark);
+            background: var(--warning);
+            color: var(--bg);
         }
 
         .compat-title {
-            font-size: 1.3rem;
-            font-weight: 600;
+            font-size: 1.1rem;
             margin-bottom: 0.5rem;
-            color: var(--neural-cyan);
+            color: var(--text);
         }
 
         .compat-desc {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
+            font-size: 0.85rem;
+            opacity: 0.7;
+            line-height: 1.4;
         }
 
         /* CTA Section */
-        .cta {
-            padding: 6rem 2rem;
+        .cta-section {
+            padding: 4rem 2rem;
             text-align: center;
-            background: linear-gradient(180deg, transparent, rgba(107, 70, 193, 0.1));
+            position: relative;
+            z-index: 10;
+        }
+
+        .cta-box {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2.5rem;
+            background: var(--glass);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .cta-title {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            margin-bottom: 0.8rem;
+            position: relative;
+            z-index: 1;
         }
 
         .cta-subtitle {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            margin-bottom: 3rem;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--nebula-purple), var(--memory-blue));
-            color: white;
-            box-shadow: 0 10px 30px rgba(107, 70, 193, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 40px rgba(107, 70, 193, 0.4);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: var(--neural-cyan);
-            border: 2px solid var(--neural-cyan);
-        }
-
-        .btn-secondary:hover {
-            background: var(--neural-cyan);
-            color: var(--cosmic-dark);
-        }
-
-        /* Installation */
-        .install-command {
-            display: inline-block;
-            background: #1a1a1a;
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-            margin: 2rem 0;
-            border: 1px solid rgba(107, 70, 193, 0.3);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
             position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .install-command:hover {
-            border-color: var(--nebula-purple);
-            background: rgba(107, 70, 193, 0.1);
-        }
-
-        .copy-hint {
-            position: absolute;
-            top: -30px;
-            right: 10px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .install-command:hover .copy-hint {
-            opacity: 1;
+            z-index: 1;
         }
 
         /* Footer */
         footer {
-            padding: 3rem 2rem;
+            padding: 2rem;
             text-align: center;
-            border-top: 1px solid rgba(107, 70, 193, 0.2);
-            margin-top: 4rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            opacity: 0.7;
         }
 
         .footer-links {
             display: flex;
             gap: 2rem;
             justify-content: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
         .footer-links a {
-            color: var(--text-secondary);
+            color: var(--text);
+            opacity: 0.7;
             text-decoration: none;
-            transition: color 0.3s ease;
+            transition: opacity 0.3s;
         }
 
         .footer-links a:hover {
-            color: var(--neural-cyan);
+            opacity: 1;
+            color: var(--accent);
         }
 
-        /* Responsive */
+        /* Mobile Optimizations */
         @media (max-width: 768px) {
-            h1 { font-size: 2rem; }
-            .hero-text { font-size: 1.5rem; }
-            .story-title { font-size: 1.8rem; }
-            .cta-title { font-size: 1.8rem; }
+            * {
+                cursor: default !important;
+            }
+            
+            .cursor-dot, .cursor-ring {
+                display: none;
+            }
+
+            .evolution-timeline {
+                flex-direction: column;
+                gap: 3rem;
+            }
+
+            .evolution-node {
+                width: 250px;
+            }
+
+            .cta-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                min-width: 250px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Neural Network Background -->
-    <div class="neural-bg">
-        <svg>
-            <defs>
-                <pattern id="neural-pattern" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
-                    <path class="neural-path" d="M0,100 Q50,50 100,100 T200,100" />
-                    <path class="neural-path" d="M0,50 Q50,100 100,50 T200,50" />
-                    <path class="neural-path" d="M50,0 Q100,50 150,0 T200,0" />
-                </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#neural-pattern)" />
-        </svg>
-    </div>
-
-    <!-- Memory Grid -->
-    <div class="memory-grid"></div>
-
-    <!-- Header -->
-    <header>
-        <div class="logo">
-            <div class="logo-symbol">
-                <div class="memory-core">M</div>
-                <div class="memory-ring"></div>
-            </div>
-        </div>
-        <h1>MNEMARIS</h1>
-        <p class="tagline">Stop re‑teaching your AI—turn past sessions into playbooks</p>
-    </header>
-
+    <!-- Custom Cursor -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    
+    <!-- Memory Field Background -->
+    <div class="memory-field" id="memoryField"></div>
+    
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-text">
-            You already have the best data: your sessions. Mnemaris reads them, learns your preferences and <span class="highlight">"never again" moments</span>, and drafts a portable playbook—CLAUDE.md for Claude Code today, with adapters for <span class="highlight">Codex (OpenAI) and Gemini CLI assistant (Google)</span>. Prefer no writes? Preview insights first.
+        <div class="glitch-container">
+            <h1>MNEMARIS</h1>
         </div>
-
-        <!-- Memory Visualization -->
-        <div class="memory-viz">
-            <h3 style="margin-bottom: 2rem; color: var(--neural-cyan);">Living Memory in Action</h3>
-            <div class="memory-stream">
-                <div class="memory-fragment">
-                    <div class="fragment-type">Mistake Pattern</div>
-                    <div class="fragment-content">Never kill system processes in prod</div>
-                </div>
-                <div class="memory-fragment">
-                    <div class="fragment-type">Success Pattern</div>
-                    <div class="fragment-content">Prefer diagnostics first: logs/diffs/tests</div>
-                </div>
-                <div class="memory-fragment">
-                    <div class="fragment-type">User Preference</div>
-                    <div class="fragment-content">Be concise; end with Next actions</div>
-                </div>
-                <div class="memory-fragment">
-                    <div class="fragment-type">Environment</div>
-                    <div class="fragment-content">macOS, non-destructive debugging preferred</div>
-                </div>
-            </div>
-            <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
-                Each session teaches. Mnemaris remembers. Your AI evolves.
-            </p>
+        <p class="tagline">
+            Stop re‑teaching your AI. Turn past sessions into a <span class="highlight">portable playbook</span> your agents actually follow.
+        </p>
+        
+        <div class="cta-group">
+            <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-primary">
+                Generate my Playbook
+            </a>
+            <a href="https://github.com/probelabs/mnemaris#preview-mode" class="btn btn-secondary">
+                Preview insights (no writes)
+            </a>
         </div>
+        
+        <p class="micro-assurance">
+            No files change until you approve. Your logs stay on your machine.
+        </p>
     </section>
-
-    <!-- Features -->
-    <section class="features">
-        <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 2rem; background: linear-gradient(135deg, var(--neural-cyan), var(--nebula-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Quick Value</h2>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🧠</div>
-                <div class="feature-title">Learns from your own work</div>
-                <div class="feature-desc">Mines real conversations for patterns and guardrails.</div>
+    
+    <!-- Terminal Demo -->
+    <div class="terminal-container">
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔄</div>
-                <div class="feature-title">Portable by design</div>
-                <div class="feature-desc">One source of truth, adapters for multiple agent systems.</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">👁️</div>
-                <div class="feature-title">Insight‑only mode</div>
-                <div class="feature-desc">See everything without touching your repo.</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🚫</div>
-                <div class="feature-title">Fewer dead ends</div>
-                <div class="feature-desc">Converts rejected ideas into explicit "don't do this" rules.</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🛡️</div>
-                <div class="feature-title">Agentic‑coding native</div>
-                <div class="feature-desc">Favors diagnostic, non‑destructive steps when that's your norm.</div>
+            <div class="terminal-body">
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-command">mnemaris</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✓ Pattern: "Never kill system processes in prod"</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✓ Pattern: "Prefer diagnostics first: logs/diffs/tests"</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✓ Pattern: "Be concise; end with Next actions"</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-command">CLAUDE.md updated with insights</span>
+                    <span class="terminal-cursor"></span>
+                </div>
             </div>
         </div>
-    </section>
-
+    </div>
+    
     <!-- Story Section -->
     <section class="story">
-        <h2 class="story-title">Every session is a story</h2>
+        <h2>Every session is a story</h2>
         <div class="story-content">
             <p>You open a session. The agent tries something bold; you ask it to roll back. It suggests restarting a service; you remind it not to kill system processes in prod. By Wednesday, you've typed the same guardrails three times.</p>
             
             <p>Those corrections are hard‑won lessons—and they vanish when the chat ends.</p>
             
-            <div class="story-quote">
-                <strong><span class="story-highlight">Mnemaris makes them stick.</span></strong>
-            </div>
+            <p><span class="story-highlight">Mnemaris makes them stick.</span></p>
             
-            <p>It reads your session history (messages, visible steps, outcomes), spots what you reject, what you accept, and the safer path you prefer. Then it drafts clear, specific instructions so the next session starts aligned. And if you're not ready to write files, run read‑only and review everything first.</p>
+            <p>It reads your session history (messages, visible steps, outcomes), spots what you reject, what you accept, and the safer path you prefer. Then it drafts clear, specific instructions so the next session starts aligned.</p>
             
             <p><strong>Result: fewer detours, more momentum—the same you, just remembered.</strong></p>
         </div>
     </section>
-
-    <!-- Terminal Demo -->
-    <div class="terminal">
-        <div class="terminal-header">
-            <div class="terminal-dot red"></div>
-            <div class="terminal-dot yellow"></div>
-            <div class="terminal-dot green"></div>
-        </div>
-        <div class="terminal-body">
-            <div class="terminal-line">
-                <span class="terminal-prompt">$</span> 
-                <span class="terminal-command">mnemaris</span>
+    
+    <!-- Evolution Stream -->
+    <section class="evolution-stream">
+        <h2 class="stream-title">How it Works</h2>
+        <div class="evolution-path">
+            <div class="evolution-timeline">
+                <div class="evolution-node">
+                    <div class="node-number">1</div>
+                    <div class="node-title">Point to history</div>
+                    <div class="node-detail">Import your past sessions—Claude Code logs, last sprint, or all time</div>
+                </div>
+                <div class="evolution-node">
+                    <div class="node-number">2</div>
+                    <div class="node-title">Extract patterns</div>
+                    <div class="node-detail">Finds rejected solutions, environment constraints, preferences</div>
+                </div>
+                <div class="evolution-node">
+                    <div class="node-number">3</div>
+                    <div class="node-title">Draft playbook</div>
+                    <div class="node-detail">Creates AGENT_PLAYBOOK.md and system profiles like CLAUDE.md</div>
+                </div>
+                <div class="evolution-node">
+                    <div class="node-number">4</div>
+                    <div class="node-title">Apply or preview</div>
+                    <div class="node-detail">Run insight‑only to see findings before you adopt them</div>
+                </div>
             </div>
-            <div class="terminal-line terminal-output">🧠 Starting conversation analysis for current project...</div>
-            <div class="terminal-line terminal-output">🎯 Found 42 conversation sessions</div>
-            <div class="terminal-line terminal-output">🚀 Using AI-powered analysis...</div>
-            <div class="terminal-line terminal-output">✅ <span class="terminal-highlight">CLAUDE.md updated with insights</span></div>
-            <div class="terminal-line terminal-output">🎉 Your AI remembers now!</div>
         </div>
-    </div>
-
+    </section>
+    
     <!-- Compatibility -->
     <section class="compatibility">
-        <h2>Compatibility</h2>
+        <h2 class="stream-title">Compatibility</h2>
         
         <div class="compat-grid">
             <div class="compat-card">
@@ -745,7 +810,7 @@
             </div>
         </div>
         
-        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+        <p style="opacity: 0.7; margin-bottom: 2rem;">
             <strong>Approach:</strong> a portable core + lightweight adapters, so your rules travel across tools.
         </p>
         
@@ -753,59 +818,114 @@
             Join adapters early access →
         </a>
     </section>
-
+    
     <!-- CTA Section -->
-    <section class="cta">
-        <h2 class="cta-title">Ready to stop re‑teaching your AI?</h2>
-        <p class="cta-subtitle">
-            Generate a portable playbook from the sessions you already have.
-        </p>
-        
-        <div class="cta-buttons">
-            <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-primary">
-                Generate my Playbook
-            </a>
-            <a href="https://github.com/probelabs/mnemaris#preview-mode" class="btn btn-secondary">
-                Preview insights (no repo changes)
-            </a>
+    <section class="cta-section">
+        <div class="cta-box">
+            <h2 class="cta-title">Ready to stop re‑teaching your AI?</h2>
+            <p class="cta-subtitle">
+                Generate a portable playbook from the sessions you already have.
+            </p>
+            <div class="cta-group">
+                <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-primary">
+                    Install Mnemaris
+                </a>
+            </div>
         </div>
-
-        <div class="install-command" onclick="copyToClipboard('npm install -g @probelabs/mnemaris')">
-            <span class="copy-hint">Click to copy</span>
-            npm install -g @probelabs/mnemaris
-        </div>
-        
-        <p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">
-            <strong>No files change until you approve.</strong> Your logs stay on your machine.
-        </p>
     </section>
-
-    <!-- Footer -->
+    
     <footer>
         <div class="footer-links">
             <a href="https://github.com/probelabs/mnemaris">GitHub</a>
             <a href="https://www.npmjs.com/package/@probelabs/mnemaris">NPM Package</a>
             <a href="https://github.com/probelabs/mnemaris/blob/main/README.md">Documentation</a>
             <a href="https://github.com/probelabs/mnemaris/discussions">Community</a>
-            <a href="mailto:hello@probelabs.com">Contact</a>
         </div>
-        <p style="color: var(--text-secondary);">
-            © 2024 ProbeLabsIO. Your logs stay on your machine. Open source.
-        </p>
+        <p>© 2024 ProbeLabsIO. Your logs stay on your machine. Open source.</p>
     </footer>
-
+    
     <script>
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                // Brief visual feedback
-                const cmd = document.querySelector('.install-command');
-                const originalBg = cmd.style.background;
-                cmd.style.background = 'rgba(107, 70, 193, 0.3)';
-                setTimeout(() => {
-                    cmd.style.background = originalBg;
-                }, 200);
+        // Custom cursor
+        const cursorDot = document.getElementById('cursorDot');
+        const cursorRing = document.getElementById('cursorRing');
+        
+        document.addEventListener('mousemove', (e) => {
+            cursorDot.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+            cursorRing.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+        });
+        
+        // Add hover effect
+        const hoverables = document.querySelectorAll('a, button, .terminal-dot, .evolution-node, .compat-card');
+        hoverables.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorRing.classList.add('hover');
             });
+            el.addEventListener('mouseleave', () => {
+                cursorRing.classList.remove('hover');
+            });
+        });
+        
+        // Generate memory particles
+        const memoryField = document.getElementById('memoryField');
+        memoryField.style.height = document.body.scrollHeight + 'px';
+        
+        const memories = [
+            '"Stop re-teaching your AI"',
+            '"Never kill system processes"',
+            '"Prefer diagnostics first"',
+            '"Be concise; end with Next actions"',
+            '"No sudo with npm"',
+            '"Always use async/await"',
+            '"Error boundaries ALWAYS"',
+            '"No force push, ever"',
+            '"TypeScript strict mode"',
+            '"const not var"',
+            '"No semicolons"',
+            '"Tabs not spaces"',
+            '"ESM only, no CommonJS"',
+            '"Dark mode by default"',
+            '"Mobile-first CSS"',
+            '→ Pattern saved permanently',
+            '→ Preference recorded',
+            '→ Updating CLAUDE.md',
+            '→ Never suggesting again',
+            '→ Context understood'
+        ];
+        
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            const memory = memories[Math.floor(Math.random() * memories.length)];
+            
+            if (memory.startsWith('→')) {
+                particle.className = 'memory-particle bright';
+            } else if (i % 3 === 0) {
+                particle.className = 'memory-particle dim';
+            } else {
+                particle.className = 'memory-particle';
+            }
+            
+            particle.textContent = memory;
+            
+            const zone = i % 4;
+            const zoneWidth = 25;
+            const baseX = zone * zoneWidth + Math.random() * (zoneWidth - 5);
+            particle.style.left = baseX + '%';
+            
+            const startY = Math.random() * 120;
+            particle.style.top = startY + 'vh';
+            
+            const offset = Math.random() * 30;
+            particle.style.animationDelay = `-${offset}s`;
+            
+            const duration = 25 + Math.random() * 10;
+            particle.style.animationDuration = duration + 's';
+            
+            memoryField.appendChild(particle);
         }
+        
+        window.addEventListener('resize', () => {
+            memoryField.style.height = document.body.scrollHeight + 'px';
+        });
     </script>
 </body>
 </html>
