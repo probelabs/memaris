@@ -27,22 +27,19 @@ Mnemaris analyzes your Claude Code conversation history to extract patterns, pre
 ## 🚀 Quick Start
 
 ```bash
-# Install globally
-npm install -g @probelabs/mnemaris
-
 # Navigate to your project
 cd your-project
 
 # Preview insights (no file changes)
-mnemaris
+npx -y @probelabs/mnemaris
 
-# Apply insights to CLAUDE.md
-mnemaris --update
+# Apply insights to CLAUDE.md  
+npx -y @probelabs/mnemaris --update
 ```
 
-That's it! Mnemaris will analyze your Claude Code history and generate personalized instructions.
+That's it! No installation needed - just run and go. Mnemaris will analyze your Claude Code history and generate personalized instructions.
 
-> **💡 Pro tip:** Run `mnemaris` first to preview what insights will be added before using `--update` to modify your CLAUDE.md file.
+> **💡 Pro tip:** The first command previews what insights will be added. Use `--update` to actually modify your CLAUDE.md file.
 
 ## 📖 How It Works
 
@@ -85,49 +82,49 @@ Personalized instructions that make every future session start smarter
 ### Basic Usage
 
 ```bash
-mnemaris                    # Preview insights (default)
-mnemaris --update          # Apply insights to CLAUDE.md
-mnemaris /path/to/project  # Analyze specific project
+npx -y @probelabs/mnemaris                    # Preview insights (default)
+npx -y @probelabs/mnemaris --update          # Apply insights to CLAUDE.md
+npx -y @probelabs/mnemaris /path/to/project  # Analyze specific project
 ```
 
 ### Advanced Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--update` | Write changes to CLAUDE.md (default: preview only) | `mnemaris --update` |
-| `--all` | Analyze all conversation history in batches | `mnemaris --all --update` |
-| `--batch-size <n>` | Token batch size when using --all (default: 50000) | `mnemaris --all --batch-size 25000` |
-| `--depth <n>` | Maximum messages to analyze (deprecated, use --tokens) | `mnemaris --depth 100` |
-| `--tokens <n>` | Maximum tokens to analyze (default: 50000) | `mnemaris --tokens 25000` |
-| `--pattern-only` | Use pattern-matching instead of AI analysis | `mnemaris --pattern-only` |
-| `--exclude-patterns` | Exclude sessions matching patterns | `mnemaris --exclude-patterns "debug,test"` |
-| `--debug` | Show debug information | `mnemaris --debug` |
+| `--update` | Write changes to CLAUDE.md (default: preview only) | `npx -y @probelabs/mnemaris --update` |
+| `--all` | Analyze all conversation history in batches | `npx -y @probelabs/mnemaris --all --update` |
+| `--batch-size <n>` | Token batch size when using --all (default: 50000) | `npx -y @probelabs/mnemaris --all --batch-size 25000` |
+| `--depth <n>` | Maximum messages to analyze (deprecated, use --tokens) | `npx -y @probelabs/mnemaris --depth 100` |
+| `--tokens <n>` | Maximum tokens to analyze (default: 50000) | `npx -y @probelabs/mnemaris --tokens 25000` |
+| `--pattern-only` | Use pattern-matching instead of AI analysis | `npx -y @probelabs/mnemaris --pattern-only` |
+| `--exclude-patterns` | Exclude sessions matching patterns | `npx -y @probelabs/mnemaris --exclude-patterns "debug,test"` |
+| `--debug` | Show debug information | `npx -y @probelabs/mnemaris --debug` |
 
 ### Pro Tips
 
 ```bash
 # For large projects with lots of history
-mnemaris --all --batch-size 30000 --update
+npx -y @probelabs/mnemaris --all --batch-size 30000 --update
 
 # Quick analysis for recent work only
-mnemaris --tokens 10000 --update
+npx -y @probelabs/mnemaris --tokens 10000 --update
 
 # Pattern-only analysis (faster, no API key needed)
-mnemaris --pattern-only --update
+npx -y @probelabs/mnemaris --pattern-only --update
 ```
 
 ### Other Commands
 
 ```bash
 # Discover all Claude Code projects
-mnemaris scan
+npx -y @probelabs/mnemaris scan
 
 # Export analysis results
-mnemaris export my-project json
-mnemaris export my-project markdown
+npx -y @probelabs/mnemaris export my-project json
+npx -y @probelabs/mnemaris export my-project markdown
 
 # Focus on specific insights
-mnemaris insights --type preferences
+npx -y @probelabs/mnemaris insights --type preferences
 ```
 
 ## 🛠️ Requirements
@@ -180,10 +177,10 @@ ls ~/.claude/projects/
 ### "Project not detected"
 ```bash
 # Use absolute path
-mnemaris /full/path/to/your/project --debug
+npx -y @probelabs/mnemaris /full/path/to/your/project --debug
 
 # Or use the scan command to see all detected projects
-mnemaris scan
+npx -y @probelabs/mnemaris scan
 ```
 
 ### AI Analysis Not Working
@@ -192,16 +189,16 @@ mnemaris scan
 echo $ANTHROPIC_API_KEY
 
 # Use pattern-only analysis as fallback
-mnemaris --pattern-only --update
+npx -y @probelabs/mnemaris --pattern-only --update
 ```
 
 ### Performance Issues
 ```bash
 # Reduce analysis scope
-mnemaris --tokens 10000 --update
+npx -y @probelabs/mnemaris --tokens 10000 --update
 
 # Use smaller batch sizes
-mnemaris --all --batch-size 25000 --update
+npx -y @probelabs/mnemaris --all --batch-size 25000 --update
 ```
 
 ## 🌐 Part of the Probe Ecosystem
