@@ -42,6 +42,8 @@ mnemaris --update
 
 That's it! Mnemaris will analyze your Claude Code history and generate personalized instructions.
 
+> **💡 Pro tip:** Run `mnemaris` first to preview what insights will be added before using `--update` to modify your CLAUDE.md file.
+
 ## 📖 How It Works
 
 <table>
@@ -90,14 +92,29 @@ mnemaris /path/to/project  # Analyze specific project
 
 ### Advanced Options
 
-| Option | Description |
-|--------|-------------|
-| `--update` | Write changes to CLAUDE.md (default: preview only) |
-| `--all-sessions` | Analyze all sessions instead of recent ones |
-| `--depth <n>` | Maximum messages to analyze (default: 200) |
-| `--pattern-only` | Use pattern-matching instead of AI analysis |
-| `--exclude-patterns` | Exclude sessions matching patterns |
-| `--debug` | Show debug information |
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--update` | Write changes to CLAUDE.md (default: preview only) | `mnemaris --update` |
+| `--all` | Analyze all conversation history in batches | `mnemaris --all --update` |
+| `--batch-size <n>` | Token batch size when using --all (default: 50000) | `mnemaris --all --batch-size 25000` |
+| `--depth <n>` | Maximum messages to analyze (deprecated, use --tokens) | `mnemaris --depth 100` |
+| `--tokens <n>` | Maximum tokens to analyze (default: 50000) | `mnemaris --tokens 25000` |
+| `--pattern-only` | Use pattern-matching instead of AI analysis | `mnemaris --pattern-only` |
+| `--exclude-patterns` | Exclude sessions matching patterns | `mnemaris --exclude-patterns "debug,test"` |
+| `--debug` | Show debug information | `mnemaris --debug` |
+
+### Pro Tips
+
+```bash
+# For large projects with lots of history
+mnemaris --all --batch-size 30000 --update
+
+# Quick analysis for recent work only
+mnemaris --tokens 10000 --update
+
+# Pattern-only analysis (faster, no API key needed)
+mnemaris --pattern-only --update
+```
 
 ### Other Commands
 
@@ -115,9 +132,23 @@ mnemaris insights --type preferences
 
 ## 🛠️ Requirements
 
-- Node.js 18+ or Bun runtime
-- Claude Code with existing conversation history
-- Optional: `ANTHROPIC_API_KEY` for AI-powered analysis (uses pattern-matching by default)
+- **Node.js 18+** or **Bun runtime**
+- **Claude Code** with existing conversation history in `~/.claude/projects/`
+- **Optional:** `ANTHROPIC_API_KEY` for AI-powered analysis
+  - Without API key: Uses fast pattern-matching analysis
+  - With API key: Uses advanced AI analysis for deeper insights
+
+### Environment Setup
+
+```bash
+# Optional: Enable AI-powered analysis
+export ANTHROPIC_API_KEY="your-api-key-here"
+
+# Verify Claude Code history exists
+ls ~/.claude/projects/
+```
+
+> **Note:** Mnemaris works great with pattern-matching analysis (no API key required), but AI-powered analysis provides much richer insights.
 
 ## 🔧 Development
 
@@ -134,6 +165,43 @@ bun run dev
 
 # Build for production
 bun run build
+```
+
+## 🔍 Troubleshooting
+
+### "No Claude Code projects found"
+```bash
+# Check if Claude Code history exists
+ls ~/.claude/projects/
+
+# If empty, use Claude Code first to create conversation history
+```
+
+### "Project not detected"
+```bash
+# Use absolute path
+mnemaris /full/path/to/your/project --debug
+
+# Or use the scan command to see all detected projects
+mnemaris scan
+```
+
+### AI Analysis Not Working
+```bash
+# Verify API key is set
+echo $ANTHROPIC_API_KEY
+
+# Use pattern-only analysis as fallback
+mnemaris --pattern-only --update
+```
+
+### Performance Issues
+```bash
+# Reduce analysis scope
+mnemaris --tokens 10000 --update
+
+# Use smaller batch sizes
+mnemaris --all --batch-size 25000 --update
 ```
 
 ## 🌐 Part of the Probe Ecosystem
