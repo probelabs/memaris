@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mnemaris - Stop re-teaching your AI</title>
-    <meta name="description" content="Turn past sessions into a portable playbook your agents actually follow. Reads Claude Code, adapts to OpenAI Codex and Google Gemini.">
+    <meta name="description" content="Turn past Claude Code sessions into persistent memory. Extracts patterns, preferences, and guardrails from your conversation history.">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            cursor: none !important;
+            cursor: none;
+        }
+        
+        /* Prevent layout shifts on load */
+        body {
+            visibility: hidden;
+            cursor: none;
         }
 
         :root {
@@ -23,17 +29,20 @@
             --border: rgba(255, 255, 255, 0.1);
         }
 
-        body {
+        html, body {
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
             background: var(--bg);
             color: var(--text);
             overflow-x: hidden;
-            cursor: none !important;
+            width: 100%;
+            max-width: 100%;
+            cursor: none;
+        }
+        
+        a, button, input, textarea, select, .terminal-dot, .evolution-node, .compat-card {
+            cursor: none;
         }
 
-        a, button, input, textarea, select {
-            cursor: none !important;
-        }
 
         /* Custom Cursor */
         .cursor-dot {
@@ -44,8 +53,16 @@
             border-radius: 50%;
             pointer-events: none;
             z-index: 10000;
+            will-change: left, top;
+            left: -50px;
+            top: -50px;
+            opacity: 0;
+            transition: opacity 0.3s;
             transform: translate(-50%, -50%);
-            will-change: transform;
+        }
+
+        .cursor-dot.visible {
+            opacity: 1;
         }
 
         .cursor-ring {
@@ -56,9 +73,16 @@
             border-radius: 50%;
             pointer-events: none;
             z-index: 9999;
+            will-change: left, top, width, height;
+            left: -50px;
+            top: -50px;
+            opacity: 0;
+            transition: opacity 0.3s, width 0.2s, height 0.2s, border-color 0.2s;
             transform: translate(-50%, -50%);
-            transition: border-color 0.2s, width 0.2s, height 0.2s;
-            will-change: transform;
+        }
+
+        .cursor-ring.visible {
+            opacity: 1;
         }
 
         .cursor-ring.hover {
@@ -69,14 +93,14 @@
 
         /* Memory Field Background */
         .memory-field {
-            position: absolute;
+            position: fixed;
             width: 100%;
-            height: 100%;
-            min-height: 100vh;
+            height: 100vh;
             pointer-events: none;
             z-index: 1;
             top: 0;
             left: 0;
+            overflow: hidden;
         }
 
         .memory-particle {
@@ -112,14 +136,22 @@
 
         /* Hero Section */
         .hero {
-            min-height: 60vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             position: relative;
             z-index: 10;
-            padding: 3rem 2rem 2rem;
+            padding: 3rem 2rem 0;
+        }
+        
+        /* Combined Hero-Terminal wrapper */
+        .hero-terminal-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem 0;
         }
 
         .glitch-container {
@@ -191,7 +223,7 @@
         .tagline {
             font-size: clamp(1rem, 2.5vw, 1.5rem);
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 0;
             font-weight: 300;
             opacity: 0.9;
             letter-spacing: 0.1em;
@@ -267,7 +299,7 @@
         .terminal-container {
             width: 100%;
             max-width: 900px;
-            margin: 0 auto 3rem;
+            margin: 3rem auto 0;
             padding: 0 2rem;
             position: relative;
             z-index: 10;
@@ -317,14 +349,18 @@
         .terminal-line {
             margin-bottom: 0.8rem;
             opacity: 0;
-            animation: fadeInLine 0.5s forwards;
+            animation: fadeInLine 0.3s forwards;
         }
 
-        .terminal-line:nth-child(1) { animation-delay: 0.5s; }
-        .terminal-line:nth-child(2) { animation-delay: 1s; }
-        .terminal-line:nth-child(3) { animation-delay: 1.5s; }
-        .terminal-line:nth-child(4) { animation-delay: 2s; }
-        .terminal-line:nth-child(5) { animation-delay: 2.5s; }
+        .terminal-line:nth-child(1) { animation-delay: 0.2s; }
+        .terminal-line:nth-child(2) { animation-delay: 0.4s; }
+        .terminal-line:nth-child(3) { animation-delay: 0.6s; }
+        .terminal-line:nth-child(4) { animation-delay: 0.8s; }
+        .terminal-line:nth-child(5) { animation-delay: 1s; }
+        .terminal-line:nth-child(6) { animation-delay: 1.2s; }
+        .terminal-line:nth-child(7) { animation-delay: 1.4s; }
+        .terminal-line:nth-child(8) { animation-delay: 1.6s; }
+        .terminal-line:nth-child(9) { animation-delay: 1.8s; }
 
         @keyframes fadeInLine {
             to {
@@ -387,11 +423,9 @@
             font-weight: 700;
         }
 
-        /* Evolution Stream */
-        .evolution-stream {
-            position: relative;
-            padding: 3rem 0;
-            overflow: hidden;
+        /* How it Works */
+        .how-it-works {
+            padding: 4rem 2rem;
             background: linear-gradient(180deg, transparent, rgba(0, 255, 136, 0.02), transparent);
         }
 
@@ -404,102 +438,175 @@
             letter-spacing: 0.2em;
         }
 
-        .evolution-path {
-            position: relative;
-            max-width: 1400px;
+        .process-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 0 2rem;
         }
 
-        .evolution-timeline {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-            padding: 2rem 0;
-        }
-
-        .evolution-timeline::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, 
-                transparent, 
-                var(--accent) 10%, 
-                var(--accent) 90%, 
-                transparent);
-            transform: translateY(-50%);
-            z-index: 1;
-        }
-
-        .evolution-node {
-            position: relative;
-            width: 200px;
-            padding: 1.5rem;
+        .process-step {
+            flex: 1;
+            padding: 2rem;
             background: var(--glass);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 15px;
             backdrop-filter: blur(10px);
             transition: all 0.3s;
-            z-index: 2;
             text-align: center;
         }
 
-        .evolution-node::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: var(--bg);
-            border: 3px solid var(--accent);
-            border-radius: 50%;
-            bottom: -35px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 3;
-        }
-
-        .evolution-node:hover {
-            transform: translateY(-10px);
+        .process-step:hover {
+            transform: translateY(-5px);
             border-color: var(--accent);
-            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.3);
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.2);
         }
 
-        .node-number {
-            position: absolute;
-            top: -15px;
-            right: -15px;
-            width: 35px;
-            height: 35px;
-            background: var(--error);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
+        .step-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .process-step h3 {
             font-size: 1.2rem;
-            color: var(--bg);
-            z-index: 3;
-        }
-
-        .node-title {
-            font-size: 1rem;
             color: var(--accent);
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
             font-weight: 700;
-            text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .node-detail {
-            font-size: 0.8rem;
-            opacity: 0.7;
-            line-height: 1.4;
+        .process-step p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.5;
         }
 
+        .process-arrow {
+            font-size: 2rem;
+            color: var(--accent);
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .process-flow {
+                flex-direction: column;
+            }
+            
+            .process-arrow {
+                transform: rotate(90deg);
+                margin: 1rem 0;
+            }
+        }
+
+        /* Probe Ecosystem Section */
+        .probe-ecosystem {
+            padding: 4rem 2rem;
+            text-align: center;
+            background: linear-gradient(180deg, transparent, rgba(0, 255, 136, 0.02), transparent);
+        }
+        
+        .probe-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .probe-gradient {
+            background: linear-gradient(45deg, var(--accent), var(--text));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .probe-content {
+            margin: 3rem 0;
+            padding: 3rem;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+        }
+        
+        .probe-logo-section {
+            margin-bottom: 2rem;
+        }
+        
+        .probe-logo {
+            max-width: 120px;
+            height: auto;
+            opacity: 0.9;
+            transition: transform 0.3s;
+        }
+        
+        .probe-logo:hover {
+            transform: scale(1.1);
+        }
+        
+        .probe-description {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .probe-description p {
+            font-size: 1rem;
+            line-height: 1.7;
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+        }
+        
+        .probe-description a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+        
+        .probe-description a:hover {
+            opacity: 0.7;
+            text-decoration: underline;
+        }
+        
+        .probe-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding: 0.8rem 1.5rem;
+            background: var(--bg);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .probe-link:hover {
+            background: var(--accent);
+            color: var(--bg);
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+        
+        .probe-footer {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        .probe-footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        
+        .probe-footer a:hover {
+            text-decoration: underline;
+        }
+        
         /* Compatibility Section */
         .compatibility {
             padding: 4rem 2rem;
@@ -635,32 +742,29 @@
             color: var(--text);
             opacity: 0.7;
             text-decoration: none;
-            transition: opacity 0.3s;
+            transition: all 0.3s;
         }
 
         .footer-links a:hover {
             opacity: 1;
             color: var(--accent);
         }
+        
+        footer p {
+            color: var(--text);
+            opacity: 0.6;
+        }
 
         /* Mobile Optimizations */
         @media (max-width: 768px) {
             * {
-                cursor: default !important;
+                cursor: auto !important;
             }
             
             .cursor-dot, .cursor-ring {
-                display: none;
+                display: none !important;
             }
 
-            .evolution-timeline {
-                flex-direction: column;
-                gap: 3rem;
-            }
-
-            .evolution-node {
-                width: 250px;
-            }
 
             .cta-group {
                 flex-direction: column;
@@ -681,31 +785,20 @@
     <!-- Memory Field Background -->
     <div class="memory-field" id="memoryField"></div>
     
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="glitch-container">
-            <h1>MNEMARIS</h1>
-        </div>
-        <p class="tagline">
-            Stop re‑teaching your AI. Turn past sessions into a <span class="highlight">portable playbook</span> your agents actually follow.
-        </p>
+    <!-- Hero and Terminal Combined -->
+    <div class="hero-terminal-wrapper">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="glitch-container">
+                <h1>MNEMARIS</h1>
+            </div>
+            <p class="tagline">
+                Stop re‑teaching your AI. Turn past sessions into <span class="highlight">persistent memory</span> your agents actually follow.
+            </p>
+        </section>
         
-        <div class="cta-group">
-            <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-primary">
-                Generate my Playbook
-            </a>
-            <a href="https://github.com/probelabs/mnemaris#preview-mode" class="btn btn-secondary">
-                Preview insights (no writes)
-            </a>
-        </div>
-        
-        <p class="micro-assurance">
-            No files change until you approve. Your logs stay on your machine.
-        </p>
-    </section>
-    
-    <!-- Terminal Demo -->
-    <div class="terminal-container">
+        <!-- Terminal Demo -->
+        <div class="terminal-container">
         <div class="terminal">
             <div class="terminal-header">
                 <div class="terminal-dot red"></div>
@@ -715,24 +808,38 @@
             <div class="terminal-body">
                 <div class="terminal-line">
                     <span class="terminal-prompt">$</span>
-                    <span class="terminal-command">mnemaris</span>
+                    <span class="terminal-command">npm install -g @probelabs/mnemaris</span>
                 </div>
                 <div class="terminal-line">
-                    <span class="terminal-output">✓ Pattern: "Never kill system processes in prod"</span>
-                </div>
-                <div class="terminal-line">
-                    <span class="terminal-output">✓ Pattern: "Prefer diagnostics first: logs/diffs/tests"</span>
-                </div>
-                <div class="terminal-line">
-                    <span class="terminal-output">✓ Pattern: "Be concise; end with Next actions"</span>
+                    <span class="terminal-output">✓ Installed mnemaris CLI globally</span>
                 </div>
                 <div class="terminal-line">
                     <span class="terminal-prompt">$</span>
-                    <span class="terminal-command">CLAUDE.md updated with insights</span>
+                    <span class="terminal-command">mnemaris</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">🧠 Analyzing conversation patterns...</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✓ Found 12 user preferences</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✓ Identified 8 rejected approaches</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">📄 Preview of CLAUDE.md changes ready</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-prompt">$</span>
+                    <span class="terminal-command">mnemaris --update</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">✅ CLAUDE.md updated with AI insights</span>
                     <span class="terminal-cursor"></span>
                 </div>
             </div>
         </div>
+    </div>
     </div>
     
     <!-- Story Section -->
@@ -751,38 +858,37 @@
         </div>
     </section>
     
-    <!-- Evolution Stream -->
-    <section class="evolution-stream">
+    <!-- How it Works -->
+    <section class="how-it-works">
         <h2 class="stream-title">How it Works</h2>
-        <div class="evolution-path">
-            <div class="evolution-timeline">
-                <div class="evolution-node">
-                    <div class="node-number">1</div>
-                    <div class="node-title">Point to history</div>
-                    <div class="node-detail">Import your past sessions—Claude Code logs, last sprint, or all time</div>
-                </div>
-                <div class="evolution-node">
-                    <div class="node-number">2</div>
-                    <div class="node-title">Extract patterns</div>
-                    <div class="node-detail">Finds rejected solutions, environment constraints, preferences</div>
-                </div>
-                <div class="evolution-node">
-                    <div class="node-number">3</div>
-                    <div class="node-title">Draft playbook</div>
-                    <div class="node-detail">Creates AGENT_PLAYBOOK.md and system profiles like CLAUDE.md</div>
-                </div>
-                <div class="evolution-node">
-                    <div class="node-number">4</div>
-                    <div class="node-title">Apply or preview</div>
-                    <div class="node-detail">Run insight‑only to see findings before you adopt them</div>
-                </div>
+        <div class="process-flow">
+            <div class="process-step">
+                <div class="step-icon">📝</div>
+                <h3>Your Conversations</h3>
+                <p>Every correction, preference, and rejected approach in your Claude Code sessions</p>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="step-icon">🤖</div>
+                <h3>Our AI Analyzer</h3>
+                <p>Extracts patterns, identifies mistakes to avoid, and learns your coding style</p>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="step-icon">✨</div>
+                <h3>Optimized CLAUDE.md</h3>
+                <p>Personalized instructions that make every future session start smarter</p>
             </div>
         </div>
     </section>
     
     <!-- Compatibility -->
     <section class="compatibility">
-        <h2 class="stream-title">Compatibility</h2>
+        <h2 class="stream-title">Platform Support</h2>
         
         <div class="compat-grid">
             <div class="compat-card">
@@ -797,7 +903,7 @@
                 <div class="compat-status coming">Starting Soon</div>
                 <div class="compat-title">OpenAI Codex</div>
                 <div class="compat-desc">
-                    Portable playbook + adapter for OpenAI's code generation models.
+                    Memory extraction + adapter for OpenAI's code generation models.
                 </div>
             </div>
             
@@ -805,13 +911,13 @@
                 <div class="compat-status coming">Starting Soon</div>
                 <div class="compat-title">Google Gemini CLI</div>
                 <div class="compat-desc">
-                    Portable playbook + adapter for Google's Gemini assistant.
+                    Memory extraction + adapter for Google's Gemini assistant.
                 </div>
             </div>
         </div>
         
         <p style="opacity: 0.7; margin-bottom: 2rem;">
-            <strong>Approach:</strong> a portable core + lightweight adapters, so your rules travel across tools.
+            <strong>Approach:</strong> a memory extraction core + lightweight adapters, so your patterns travel across tools.
         </p>
         
         <a href="https://github.com/probelabs/mnemaris/discussions" class="btn btn-secondary">
@@ -822,9 +928,8 @@
     <!-- CTA Section -->
     <section class="cta-section">
         <div class="cta-box">
-            <h2 class="cta-title">Ready to stop re‑teaching your AI?</h2>
             <p class="cta-subtitle">
-                Generate a portable playbook from the sessions you already have.
+                Extract insights from your sessions and make them permanent.
             </p>
             <div class="cta-group">
                 <a href="https://www.npmjs.com/package/@probelabs/mnemaris" class="btn btn-primary">
@@ -834,40 +939,115 @@
         </div>
     </section>
     
+    <!-- Probe Ecosystem -->
+    <section class="probe-ecosystem">
+        <div class="probe-container">
+            <h2 class="stream-title"><span class="probe-gradient">Probe Ecosystem</span></h2>
+            
+            <div class="probe-content">
+                <div class="probe-logo-section">
+                    <img src="https://probelabs.com/logo.png" alt="Probe Labs" class="probe-logo" />
+                </div>
+                
+                <div class="probe-description">
+                    <p>
+                        Mnemaris is part of the <a href="https://probelabs.com" target="_blank">Probe ecosystem</a>—tools dedicated to improving human and AI collaboration in development.
+                    </p>
+                    <p>
+                        While <a href="https://probelabs.com" target="_blank">Probe</a> helps AI understand code context, 
+                        Mnemaris preserves your hard-won lessons, turning every correction and preference into permanent memory that follows you across sessions.
+                    </p>
+                    <a href="https://probelabs.com" class="probe-link">
+                        Explore the Ecosystem
+                        <span>→</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="probe-footer">
+                Questions or feedback? Reach out at <a href="mailto:hello@probelabs.com">hello@probelabs.com</a>
+            </div>
+        </div>
+    </section>
+    
     <footer>
         <div class="footer-links">
             <a href="https://github.com/probelabs/mnemaris">GitHub</a>
-            <a href="https://www.npmjs.com/package/@probelabs/mnemaris">NPM Package</a>
-            <a href="https://github.com/probelabs/mnemaris/blob/main/README.md">Documentation</a>
-            <a href="https://github.com/probelabs/mnemaris/discussions">Community</a>
+            <a href="https://probelabs.com">Probe Labs</a>
+            <a href="https://www.npmjs.com/package/@probelabs/mnemaris">NPM</a>
         </div>
-        <p>© 2024 ProbeLabsIO. Your logs stay on your machine. Open source.</p>
+        <p>© 2025 Probe Labs • Memory extracted, lessons preserved</p>
     </footer>
     
     <script>
-        // Custom cursor
+        // Initialize custom cursor
         const cursorDot = document.getElementById('cursorDot');
         const cursorRing = document.getElementById('cursorRing');
+        let cursorVisible = false;
         
-        document.addEventListener('mousemove', (e) => {
-            cursorDot.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
-            cursorRing.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+        // Update cursor position
+        function updateCursor(e) {
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Both elements use the same positioning
+            if (!cursorVisible) {
+                cursorDot.style.left = x + 'px';
+                cursorDot.style.top = y + 'px';
+                cursorRing.style.left = x + 'px';
+                cursorRing.style.top = y + 'px';
+                
+                // Make visible after initial positioning
+                setTimeout(() => {
+                    cursorDot.classList.add('visible');
+                    cursorRing.classList.add('visible');
+                    cursorVisible = true;
+                }, 10);
+            } else {
+                cursorDot.style.left = x + 'px';
+                cursorDot.style.top = y + 'px';
+                cursorRing.style.left = x + 'px';
+                cursorRing.style.top = y + 'px';
+            }
+        }
+        
+        // Track mouse movement
+        document.addEventListener('mousemove', updateCursor);
+        
+        // Hide cursor when leaving window
+        document.addEventListener('mouseleave', () => {
+            cursorDot.classList.remove('visible');
+            cursorRing.classList.remove('visible');
+            cursorVisible = false;
         });
         
-        // Add hover effect
-        const hoverables = document.querySelectorAll('a, button, .terminal-dot, .evolution-node, .compat-card');
-        hoverables.forEach(el => {
-            el.addEventListener('mouseenter', () => {
+        document.addEventListener('mouseenter', () => {
+            if (cursorVisible) {
+                cursorDot.classList.add('visible');
+                cursorRing.classList.add('visible');
+            }
+        });
+        
+        // Add hover effect for interactive elements
+        const interactiveElements = 'a, button, .terminal-dot, .evolution-node, .compat-card';
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.matches(interactiveElements) || e.target.closest(interactiveElements)) {
                 cursorRing.classList.add('hover');
-            });
-            el.addEventListener('mouseleave', () => {
+            }
+        });
+        
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.matches(interactiveElements) || e.target.closest(interactiveElements)) {
                 cursorRing.classList.remove('hover');
-            });
+            }
         });
         
         // Generate memory particles
         const memoryField = document.getElementById('memoryField');
-        memoryField.style.height = document.body.scrollHeight + 'px';
+        // Set initial height after content loads to prevent shifts
+        window.addEventListener('load', () => {
+            memoryField.style.height = document.body.scrollHeight + 'px';
+        });
         
         const memories = [
             '"Stop re-teaching your AI"',
@@ -923,8 +1103,15 @@
             memoryField.appendChild(particle);
         }
         
+        // Prevent any animations from starting until page is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.style.visibility = 'visible';
+        });
+        
         window.addEventListener('resize', () => {
-            memoryField.style.height = document.body.scrollHeight + 'px';
+            requestAnimationFrame(() => {
+                memoryField.style.height = document.body.scrollHeight + 'px';
+            });
         });
     </script>
 </body>

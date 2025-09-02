@@ -48,7 +48,12 @@
       "Read(/Users/leonidbugaev/go/src/vow/site/**)",
       "Read(/Users/leonidbugaev/go/src/vow/site/**)",
       "Bash(npx wrangler pages deploy:*)",
-      "Bash(npx wrangler pages project create:*)"
+      "Bash(npx wrangler pages project create:*)",
+      "Read(/Users/leonidbugaev/go/src/vow/**)",
+      "Read(/Users/leonidbugaev/go/src/vow/**)",
+      "Read(/Users/leonidbugaev/go/src/vow/**)",
+      "Bash(npx wrangler:*)",
+      "Bash(bun:*)"
     ],
     "deny": [],
     "ask": []

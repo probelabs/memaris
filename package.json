@@ -1,7 +1,7 @@
 {
   "name": "@probelabs/mnemaris",
   "version": "0.2.0",
-  "description": "A memory-driven analysis tool for Claude Code conversations. Extract insights and improve future AI sessions.",
+  "description": "Stop re-teaching your AI. Turn past Claude Code sessions into persistent memory that follows you across projects.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -45,13 +45,15 @@
     "ai-tools",
     "productivity"
   ],
-  "author": "ProbeLabsIO",
+  "author": "Probe Labs <hello@probelabs.com> (https://probelabs.com)",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "latest",
     "@types/cli-progress": "^3.11.6",
+    "@types/readline-sync": "^1.4.8",
     "cli-progress": "^3.12.0",
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "readline-sync": "^1.4.10"
   },
   "devDependencies": {
     "@types/bun": "latest",

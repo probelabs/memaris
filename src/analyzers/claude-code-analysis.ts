@@ -38,7 +38,7 @@ export class ClaudeCodeAnalyzer {
 
   constructor() {
     this.progressBar = new cliProgress.SingleBar({
-      format: 'Analyzing |{bar}| {percentage}% | ETA: {eta}s | {status}',
+      format: 'Analyzing |{bar}| {percentage}% | {status}',
       barCompleteChar: '\u2588',
       barIncompleteChar: '\u2591',
       hideCursor: true
@@ -71,12 +71,12 @@ Analyze the entire AI–human development session transcript (including any visi
 
 <pattern-detection-heuristics>
 - Failure→Success Flow: Extract (a) initial approach/assumption, (b) failure signals (errors, timeouts, user rejection), (c) pivot trigger (new info, directive, constraint), (d) working approach, (e) why it worked.
-- User Overrides & Boundaries: Look for "don't…", "stop…", "use … instead", "never …", "only …", and treat these as persistent preferences/boundaries.
+- User Overrides & Boundaries: Look for "don't…", "stop…", "use … instead", "never …", "only …", and capture the FULL CONTEXT and reasoning behind these constraints. Include the domain/scenario where they apply (e.g., "in debugging scenarios", "for production systems", "when handling timeouts").
 - Unsafe/Corner‑Cutting: Disabling or skipping tests/linters, suppressing errors, using root/admin casually, editing prod data, hardcoding credentials, ignoring safety/privacy checks, bypassing review, changing configs globally to make one case pass.
 - Permission/Access Issues: Missing filesystem/network permissions, sandbox limitations, blocked commands, missing tools/binaries, lack of API keys, rate limits.
 - Wrong Assumptions: OS/tooling mismatches, assuming unavailable frameworks, incorrect file paths, mistaken versions, unsupported flags.
 - Effective Solutions/Workflows: Bisecting, minimal repros, logging, feature flags, dry runs, test-first, small diffs/patches, CLI invocations that worked, editor/REPL strategies that helped.
-- Communication Style Signals: Preference for concise vs. detailed, code-first vs. explanation-first, step-by-step vs. final answer, use of checklists, desire for diffs/patches over prose.
+- Communication Style & Preferences: Capture specific workflow preferences with context and reasoning (e.g., "prefers deterministic behavior over convenience for system reliability", "values explicit user control to prevent unexpected behaviors", "likes aggressive refactoring when it improves architecture clarity"). Include the TECHNICAL DOMAIN and WHY the user prefers this approach.
 </pattern-detection-heuristics>
 
 <evidence-rules>
@@ -85,7 +85,7 @@ Analyze the entire AI–human development session transcript (including any visi
 </evidence-rules>
 
 <prioritization>
-- Limit to the top 10 "mistakes" and top 10 "successes". Prioritize by (impact × frequency). If tied, prefer more recent patterns.
+- Find and include ALL significant "mistakes" and "successes" - there's no limit or target number. Some conversations may have 2 key insights, others may have 15+. Include everything that meets the significance threshold. Prioritize by (impact × frequency). If tied, prefer more recent patterns.
 - "Impact" = how much it slowed/speeded progress or affected correctness/safety. "Frequency" = how often it occurred in the transcript.
 </prioritization>
 
@@ -128,7 +128,8 @@ Analyze the entire AI–human development session transcript (including any visi
 - Output ONLY a valid JSON object. No explanations, no markdown, no code blocks.
 - Use the schema below verbatim. Arrays may be empty. Strings must be quoted. No unescaped quotes.
 - Every item MUST include at least one evidence quote.
-- Use "unknown" where details are not present in the transcript.
+- For string fields (os, verbosity, techLevel, patience): Use "unknown" where details are not present in the transcript.
+- For array fields (restrictions, tools, boundaries, preferences, recommendations): Use empty arrays [] where no items are found, NEVER use "unknown" string.
 </output-rules>
 
 <output-format>
@@ -160,8 +161,8 @@ Analyze the entire AI–human development session transcript (including any visi
       "techLevel": "beginner|intermediate|expert|unknown",
       "patience": "high|medium|low|unknown"
     },
-    "boundaries": ["things the user won't accept, from quotes"],
-    "preferences": ["stable preferences (e.g., 'diff-only patches', 'step-by-step with commands')"]
+    "boundaries": ["specific constraints with context, e.g., 'avoid killing system processes during debugging' or 'never use automatic fallbacks in message routing systems', or empty array if none found"],
+    "preferences": ["detailed preferences with context and reasoning, e.g., 'prefers deterministic behavior over convenience when designing timeout mechanisms' or 'values explicit user control over automatic decisions in system architecture', or empty array if none found"]
   },
   "recommendations": [
     "Specific, reusable, imperative guidance (e.g., 'If tests fail, do not disable them; bisect failing case and add minimal repro first')",
@@ -216,12 +217,13 @@ Analyze the entire AI–human development session transcript (including any visi
     const estimatedTokens = Math.ceil(formattedConversation.length / 4);
     console.log(`📊 Analyzing ~${estimatedTokens.toLocaleString()} tokens (${limitedMessages.length} messages)`);
     
-    this.progressBar.start(100, 0, { status: 'Initializing Claude Code analysis...' });
+    const analysisStartTime = Date.now();
+    this.progressBar.start(100, 0, { status: 'Initializing analysis...' });
 
     try {
       const analysisPrompt = this.ANALYSIS_PROMPT.replace('{conversation}', formattedConversation);
       
-      this.progressBar.update(10, { status: 'Sending request to Claude...' });
+      this.progressBar.update(10, { status: 'Sending request to AI (~1 min)...' });
       
       // Use Claude Code SDK - it handles authentication automatically
       const options = {
@@ -237,12 +239,12 @@ Analyze the entire AI–human development session transcript (including any visi
         options
       });
 
-      this.progressBar.update(30, { status: 'Processing Claude response...' });
+      this.progressBar.update(30, { status: 'Waiting for AI analysis...' });
 
       let result = '';
       let messageCount = 0;
       
-      // Stream the response
+      // Stream the response with time-based progress
       for await (const message of response) {
         if (message.type === 'assistant') {
           messageCount++;
@@ -263,10 +265,11 @@ Analyze the entire AI–human development session transcript (including any visi
           
           result += textContent;
           
-          // Update progress based on message chunks received
-          const progress = Math.min(90, 30 + (messageCount * 20));
+          // Update progress based on message chunks received (streaming is fast, actual processing takes time)
+          const progress = Math.min(85, 30 + (messageCount * 15));
+          
           this.progressBar.update(progress, { 
-            status: `Received message ${messageCount}, analyzing...` 
+            status: `Receiving AI analysis...` 
           });
         }
       }
@@ -296,7 +299,42 @@ Analyze the entire AI–human development session transcript (including any visi
           throw new Error('Could not find valid JSON braces in Claude\'s response');
         }
         
-        const analysisResult = JSON.parse(cleanJson) as AIAnalysisResult;
+        const parsedResult = JSON.parse(cleanJson);
+        
+        // Ensure arrays are arrays, not "unknown" strings
+        const analysisResult: AIAnalysisResult = {
+          mistakes: parsedResult.mistakes || [],
+          successes: parsedResult.successes || [],
+          userProfile: {
+            environment: {
+              os: parsedResult.userProfile?.environment?.os || 'unknown',
+              restrictions: Array.isArray(parsedResult.userProfile?.environment?.restrictions) 
+                ? parsedResult.userProfile.environment.restrictions 
+                : [],
+              tools: Array.isArray(parsedResult.userProfile?.environment?.tools)
+                ? parsedResult.userProfile.environment.tools
+                : []
+            },
+            style: {
+              verbosity: parsedResult.userProfile?.style?.verbosity || 'concise',
+              techLevel: parsedResult.userProfile?.style?.techLevel || 'intermediate',
+              patience: parsedResult.userProfile?.style?.patience || 'medium'
+            },
+            boundaries: Array.isArray(parsedResult.userProfile?.boundaries)
+              ? parsedResult.userProfile.boundaries
+              : parsedResult.userProfile?.boundaries === 'unknown'
+              ? []
+              : [parsedResult.userProfile?.boundaries].filter(Boolean),
+            preferences: Array.isArray(parsedResult.userProfile?.preferences)
+              ? parsedResult.userProfile.preferences
+              : parsedResult.userProfile?.preferences === 'unknown'
+              ? []
+              : [parsedResult.userProfile?.preferences].filter(Boolean)
+          },
+          recommendations: Array.isArray(parsedResult.recommendations)
+            ? parsedResult.recommendations
+            : []
+        };
         
         this.progressBar.update(100, { status: 'Analysis complete!' });
         this.progressBar.stop();
@@ -322,8 +360,43 @@ Analyze the entire AI–human development session transcript (including any visi
               return `"examples": [${fixed}]`;
             });
           
-          const analysisResult = JSON.parse(repairedJson) as AIAnalysisResult;
+          const parsedResult = JSON.parse(repairedJson);
           console.log('✅ JSON repaired successfully');
+          
+          // Ensure arrays are arrays, not "unknown" strings (same validation as above)
+          const analysisResult: AIAnalysisResult = {
+            mistakes: parsedResult.mistakes || [],
+            successes: parsedResult.successes || [],
+            userProfile: {
+              environment: {
+                os: parsedResult.userProfile?.environment?.os || 'unknown',
+                restrictions: Array.isArray(parsedResult.userProfile?.environment?.restrictions) 
+                  ? parsedResult.userProfile.environment.restrictions 
+                  : [],
+                tools: Array.isArray(parsedResult.userProfile?.environment?.tools)
+                  ? parsedResult.userProfile.environment.tools
+                  : []
+              },
+              style: {
+                verbosity: parsedResult.userProfile?.style?.verbosity || 'concise',
+                techLevel: parsedResult.userProfile?.style?.techLevel || 'intermediate',
+                patience: parsedResult.userProfile?.style?.patience || 'medium'
+              },
+              boundaries: Array.isArray(parsedResult.userProfile?.boundaries)
+                ? parsedResult.userProfile.boundaries
+                : parsedResult.userProfile?.boundaries === 'unknown'
+                ? []
+                : [parsedResult.userProfile?.boundaries].filter(Boolean),
+              preferences: Array.isArray(parsedResult.userProfile?.preferences)
+                ? parsedResult.userProfile.preferences
+                : parsedResult.userProfile?.preferences === 'unknown'
+                ? []
+                : [parsedResult.userProfile?.preferences].filter(Boolean)
+            },
+            recommendations: Array.isArray(parsedResult.recommendations)
+              ? parsedResult.recommendations
+              : []
+          };
           
           this.progressBar.update(100, { status: 'Analysis complete!' });
           this.progressBar.stop();

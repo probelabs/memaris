@@ -4,6 +4,97 @@ import { Command } from 'commander';
 import { ProjectDiscovery } from '../parsers/project-discovery.js';
 import { ProjectDetector } from '../parsers/project-detector.js';
 import { JSONLParser } from '../parsers/jsonl-parser.js';
+
+// Helper function to check if a message has substantial content
+function hasSubstantialContent(message: ClaudeMessage): boolean {
+  let content = '';
+  if (message.type === 'user') {
+    content = JSONLParser.extractUserText(message);
+  } else if (message.type === 'assistant') {
+    const textBlocks = JSONLParser.extractAssistantText(message);
+    content = textBlocks.join('\n');
+  } else if (message.type === 'summary' && message.summary) {
+    content = `[Session Summary: ${message.summary}]`;
+  } else {
+    content = '[Non-text message]';
+  }
+  
+  return content.trim().length > 10;
+}
+
+// Helper function to estimate tokens in a message (roughly 4 chars = 1 token)
+function estimateTokens(message: ClaudeMessage): number {
+  let content = '';
+  if (message.type === 'user') {
+    content = JSONLParser.extractUserText(message);
+  } else if (message.type === 'assistant') {
+    const textBlocks = JSONLParser.extractAssistantText(message);
+    content = textBlocks.join('\n');
+  } else if (message.type === 'summary' && message.summary) {
+    content = `[Session Summary: ${message.summary}]`;
+  } else {
+    content = '[Non-text message]';
+  }
+  
+  return Math.ceil(content.length / 4); // Rough estimate: 4 chars ≈ 1 token
+}
+
+// Helper function to merge multiple AIAnalysisResult objects
+function mergeAnalysisResults(results: any[]): any {
+  if (results.length === 0) return null;
+  if (results.length === 1) return results[0];
+
+  const merged = {
+    mistakes: [] as any[],
+    successes: [] as any[],
+    userProfile: {
+      environment: {
+        os: results[0].userProfile.environment.os,
+        restrictions: [] as string[],
+        tools: [] as string[]
+      },
+      style: {
+        verbosity: results[0].userProfile.style.verbosity,
+        techLevel: results[0].userProfile.style.techLevel,
+        patience: results[0].userProfile.style.patience
+      },
+      boundaries: [] as string[],
+      preferences: [] as string[]
+    },
+    recommendations: [] as string[]
+  };
+
+  // Merge all mistakes and successes
+  for (const result of results) {
+    merged.mistakes.push(...(result.mistakes || []));
+    merged.successes.push(...(result.successes || []));
+    merged.recommendations.push(...(result.recommendations || []));
+    
+    // Merge user profile arrays
+    if (result.userProfile) {
+      merged.userProfile.boundaries.push(...(result.userProfile.boundaries || []));
+      merged.userProfile.preferences.push(...(result.userProfile.preferences || []));
+      merged.userProfile.environment.restrictions.push(...(result.userProfile.environment.restrictions || []));
+      merged.userProfile.environment.tools.push(...(result.userProfile.environment.tools || []));
+    }
+  }
+
+  // Deduplicate arrays
+  merged.userProfile.boundaries = [...new Set(merged.userProfile.boundaries)];
+  merged.userProfile.preferences = [...new Set(merged.userProfile.preferences)];
+  merged.userProfile.environment.restrictions = [...new Set(merged.userProfile.environment.restrictions)];
+  merged.userProfile.environment.tools = [...new Set(merged.userProfile.environment.tools)];
+  merged.recommendations = [...new Set(merged.recommendations)];
+
+  // Sort results by importance/frequency (but don't limit them)
+  merged.mistakes = merged.mistakes
+    .sort((a, b) => (b.lesson || '').length - (a.lesson || '').length);
+  
+  merged.successes = merged.successes
+    .sort((a, b) => (b.lesson || '').length - (a.lesson || '').length);
+
+  return merged;
+}
 import { AIInsightAnalyzer } from '../analyzers/ai-insights.js';
 import { UserPatternAnalyzer } from '../analyzers/user-patterns.js';
 import { ClaudeCodeAnalyzer } from '../analyzers/claude-code-analysis.js';
@@ -12,14 +103,13 @@ import type { AnalysisConfig, ClaudeMessage, AnalysisReport } from '../types/ind
 import { query } from '@anthropic-ai/claude-code';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve, join } from 'path';
+import readlineSync from 'readline-sync';
 
-async function updateClaudeMd(projectPath: string, analysisResults: any, dryRun: boolean = false): Promise<void> {
+async function updateClaudeMd(projectPath: string, analysisResults: any, dryRun: boolean = false, debug: boolean = false): Promise<string> {
   const claudeMdPath = join(resolve(projectPath), 'CLAUDE.md');
   
-  if (dryRun) {
-    console.log('\n👁️  Dry run: Showing proposed CLAUDE.md changes...');
-  } else {
-    console.log('\n📝 Updating CLAUDE.md with analysis recommendations...');
+  if (!dryRun) {
+    console.log('\n🤖 Generating CLAUDE.md updates...');
   }
   
   // Read existing CLAUDE.md content if it exists
@@ -30,7 +120,7 @@ async function updateClaudeMd(projectPath: string, analysisResults: any, dryRun:
 
   // Create prompt for Claude Code SDK to update CLAUDE.md
   const updatePrompt = `
-You are updating a CLAUDE.md file for a software project based on conversation analysis insights.
+Naturally merge the conversation analysis insights into this CLAUDE.md file. Add only what is specific enough and actionable. Follow common sense - don't repeat yourself or add obvious things. If the file doesn't exist, create it.
 
 <current-claude-md>
 ${existingContent || '[File does not exist yet]'}
@@ -40,37 +130,38 @@ ${existingContent || '[File does not exist yet]'}
 ${JSON.stringify(analysisResults, null, 2)}
 </analysis-results>
 
-<task>
-Based on the analysis of this user's conversation patterns, create or update the CLAUDE.md file to include:
+Guidelines for merging:
+- Keep existing content that's still relevant
+- Add specific user preferences, boundaries, and lessons learned that will genuinely help future AI sessions
+- Only include insights that are concrete and actionable (avoid vague generalities)
+- Group related insights logically
+- Don't duplicate existing information
+- Use clear, direct language that other AIs can easily follow
 
-1. Keep any existing project-specific instructions intact
-2. Add a new section called "## AI Interaction Guidelines" (or update if it exists)
-3. Include the most important recommendations from the analysis
-4. Focus on actionable instructions that will help future AI sessions work better with this user
-5. Write in a clear, concise style suitable for AI consumption
+IMPORTANT: You MUST actually use the tools to update the file, not just describe what you would do.
 
-The updated content should:
-- Preserve any existing project setup, build instructions, or domain knowledge
-- Add specific guidance about this user's preferences and boundaries
-- Include environment-specific considerations (OS: ${analysisResults.userProfile.environment.os})
-- Mention communication style preferences (${analysisResults.userProfile.style.verbosity}, ${analysisResults.userProfile.style.techLevel} level)
-- Include the most critical "mistakes to avoid" as specific instructions
-</task>
+Step by step:
+1. First, use the Read tool to check if CLAUDE.md exists in the current directory
+2. Then use the Write tool to create or Edit tool to update the CLAUDE.md file with the merged insights  
+3. After making the file changes, return a summary in unified diff format
 
-<output-rules>
-Return ONLY the complete CLAUDE.md file content. No explanations, no markdown code blocks, just the raw file content.
-</output-rules>
+You must actually execute the Read and Write/Edit tools, not just talk about them.
+
+Return format: A unified diff showing the changes you made, using proper diff format with:
+- File headers: --- a/CLAUDE.md and +++ b/CLAUDE.md  
+- Hunk headers with line numbers: @@ -start,count +start,count @@
+- Lines starting with - for removals, + for additions, and space for context
+- If no changes are needed, return "No changes needed"
 `;
 
   try {
-    console.log('🤖 Generating CLAUDE.md updates...');
-    
     const response = query({
       prompt: updatePrompt,
       options: {
-        allowedTools: [],
-        maxTurns: 1,
+        allowedTools: ['*'], // Allow all tools including file operations
+        maxTurns: 20, // Allow many turns for complex file operations
         model: 'claude-sonnet-4-20250514',
+        cwd: projectPath, // Set working directory
         pathToClaudeCodeExecutable: '/Users/leonidbugaev/.local/bin/claude'
       }
     });
@@ -92,17 +183,21 @@ Return ONLY the complete CLAUDE.md file content. No explanations, no markdown co
     }
 
     if (dryRun) {
-      // Show the proposed changes instead of writing
-      console.log('\n📄 Proposed CLAUDE.md content:');
-      console.log('─'.repeat(80));
-      console.log(result);
-      console.log('─'.repeat(80));
-      console.log(`💡 Dry run complete. File NOT modified: ${claudeMdPath}`);
-      console.log('   Run without --dry-run to apply these changes.');
+      // In preview mode, don't actually update files, just return what would happen
+      return result;
     } else {
-      // Write the updated CLAUDE.md
-      writeFileSync(claudeMdPath, result, 'utf-8');
-      console.log(`✅ CLAUDE.md updated successfully at: ${claudeMdPath}`);
+      // The Claude Code agent has already updated the file, show the diff summary
+      if (result.trim() === "No changes needed") {
+        console.log('\n✅ No changes needed - CLAUDE.md is already up to date');
+      } else {
+        console.log('\n🔍 Changes applied to CLAUDE.md:');
+        console.log('─'.repeat(80));
+        console.log(result);
+        console.log('─'.repeat(80));
+        console.log(`\n✅ CLAUDE.md updated successfully at: ${claudeMdPath}`);
+      }
+      
+      return result;
     }
     
   } catch (error) {
@@ -154,14 +249,15 @@ program
   .argument('[path]', 'Path to project directory (defaults to current directory)')
   .description('Analyze Claude Code conversations and improve future AI sessions')
   .option('--pattern-only', 'Use pattern-matching analysis instead of AI-powered')
-  .option('--no-update', 'Skip updating CLAUDE.md file')
-  .option('--all-sessions', 'Analyze all sessions instead of recent ones')
-  .option('--depth <number>', 'Maximum number of messages to analyze (default: 200)', '200')
+  .option('--update', 'Actually write the CLAUDE.md file (by default only preview)')
+  .option('--all', 'Process all conversation history in batches (default: recent sessions only)')
+  .option('--depth <number>', 'Maximum number of messages to analyze (deprecated)', '0')
+  .option('--tokens <number>', 'Maximum tokens to analyze when not using --all (default: 50000)', '50000')
+  .option('--batch-size <number>', 'Token batch size when using --all (default: 50000)', '50000')
   .option('--confidence <threshold>', 'Minimum confidence threshold for insights (0-1)', '0.5')
   .option('--debug', 'Show debug information about project detection')
   .option('--debug-messages', 'Show debug information for large messages (>1000 tokens)')
   .option('--exclude-patterns <patterns>', 'Comma-separated patterns to exclude sessions')
-  .option('--preview', 'Show proposed CLAUDE.md changes without writing them')
   .action(async (path, options) => {
     try {
       if (options.debug) {
@@ -169,11 +265,8 @@ program
         return;
       }
 
-      // Validate preview usage
-      if (options.preview && options.noUpdate) {
-        console.error('❌ Error: --preview cannot be used with --no-update');
-        process.exit(1);
-      }
+      // Preview mode is now default, --update flag is needed to write files
+      const isPreviewMode = !options.update;
 
       console.log('🧠 Starting conversation analysis for current project...\n');
 
@@ -201,23 +294,224 @@ program
       console.log(`📊 Analyzing project: ${project.name}`);
 
       const allMessages: ClaudeMessage[] = [];
-      const messageToSessionMap = new Map<ClaudeMessage, string>();
+      let messageToSessionMap = new Map<ClaudeMessage, string>();
       let processedSessions = 0;
+      
+      // Use token limit (new default) or fall back to message depth if specified
+      const maxTokens = parseInt(options.tokens);
+      const maxDepth = parseInt(options.depth);
+      const useTokenLimit = maxDepth === 0; // Use tokens when depth is 0 (default)
+      let currentTokenCount = 0;
+      
+      // For --all mode, collect ALL messages and process in batches
+      if (options.all) {
+        console.log('📦 Batch mode: Collecting all conversation history...');
+        const allHistoryMessages: ClaudeMessage[] = [];
+        const allMessageToSessionMap = new Map<ClaudeMessage, string>();
+        
+        // Collect ALL messages from ALL sessions
+        for (const session of project.sessions) {
+          console.log(`📄 Collecting from: ${session.filePath}`);
+          const messages = JSONLParser.parseSessionFile(session.filePath);
+          const substantialMessages = messages.filter(hasSubstantialContent);
+          
+          substantialMessages.forEach(msg => allMessageToSessionMap.set(msg, session.filePath));
+          allHistoryMessages.push(...substantialMessages);
+          
+          console.log(`   ✅ Collected ${substantialMessages.length} substantial messages (${messages.length} total)`);
+        }
+        
+        console.log(`\n📊 Total collected: ${allHistoryMessages.length} messages`);
+        
+        // Calculate total tokens
+        const totalTokens = allHistoryMessages.reduce((sum, msg) => sum + estimateTokens(msg), 0);
+        console.log(`📊 Estimated total tokens: ${totalTokens.toLocaleString()}`);
+        
+        // Calculate batches needed
+        const batchSize = parseInt(options.batchSize);
+        const batchesNeeded = Math.ceil(totalTokens / batchSize);
+        const estimatedTotalMinutes = batchesNeeded * 1; // ~1 minute per batch
+        console.log(`📦 Processing in ${batchesNeeded} batches of ~${batchSize.toLocaleString()} tokens each`);
+        console.log(`⏱️  Estimated total time: ~${estimatedTotalMinutes} minutes\n`);
+        
+        // Process each batch with ETA tracking
+        const batchResults: any[] = [];
+        let processedMessages = 0;
+        const startTime = Date.now();
+        
+        for (let batchNum = 1; batchNum <= batchesNeeded; batchNum++) {
+          const remainingBatches = batchesNeeded - batchNum + 1;
+          const estimatedMinutesRemaining = remainingBatches * 1; // ~1 minute per batch
+          
+          console.log(`🔄 Processing batch ${batchNum}/${batchesNeeded} (ETA: ~${estimatedMinutesRemaining} min)...`);
+          
+          // Collect messages for this batch
+          const batchMessages: ClaudeMessage[] = [];
+          let batchTokenCount = 0;
+          
+          while (processedMessages < allHistoryMessages.length && batchTokenCount < batchSize) {
+            const msg = allHistoryMessages[processedMessages]!; // Assert non-null since we check length
+            const msgTokens = estimateTokens(msg);
+            
+            if (batchTokenCount + msgTokens > batchSize && batchMessages.length > 0) {
+              break; // Don't exceed batch size
+            }
+            
+            batchMessages.push(msg);
+            batchTokenCount += msgTokens;
+            processedMessages++;
+          }
+          
+          console.log(`   📊 Batch ${batchNum}: ${batchMessages.length} messages (~${batchTokenCount} tokens)`);
+          
+          // Analyze this batch
+          const batchStartTime = Date.now();
+          const claudeAnalyzer = new ClaudeCodeAnalyzer();
+          const excludePatterns = options.excludePatterns ? 
+            options.excludePatterns.split(',').map((p: string) => p.trim()) : 
+            undefined;
+          
+          const batchResult = await claudeAnalyzer.analyzeConversation(
+            batchMessages, 
+            batchMessages.length, 
+            options.debugMessages, 
+            allMessageToSessionMap, 
+            excludePatterns
+          );
+          
+          batchResults.push(batchResult);
+          
+          // Calculate actual elapsed time and adjust ETA for remaining batches
+          const batchElapsedSeconds = Math.round((Date.now() - batchStartTime) / 1000);
+          const totalElapsedMinutes = Math.round((Date.now() - startTime) / 60000);
+          const avgBatchTimeMinutes = totalElapsedMinutes / batchNum;
+          const remainingBatchesAfterThis = batchesNeeded - batchNum;
+          const adjustedETA = Math.round(remainingBatchesAfterThis * avgBatchTimeMinutes);
+          
+          console.log(`   ✅ Batch ${batchNum} complete (${batchElapsedSeconds}s): ${batchResult.mistakes.length} mistakes, ${batchResult.successes.length} successes`);
+          
+          if (remainingBatchesAfterThis > 0) {
+            console.log(`   ⏱️  Remaining: ${remainingBatchesAfterThis} batches (~${adjustedETA} min ETA)\n`);
+          } else {
+            console.log(`   🎉 All batches complete! Total time: ${totalElapsedMinutes} min\n`);
+          }
+        }
+        
+        // Merge all batch results
+        console.log('🔄 Merging all batch results...');
+        const aiResults = mergeAnalysisResults(batchResults);
+        console.log(`✅ Final merged results: ${aiResults.mistakes.length} mistakes, ${aiResults.successes.length} successes`);
+        
+        // Continue with merged results (skip normal collection)
+        allMessages.push(...allHistoryMessages.slice(0, 100)); // Add some for display
+        messageToSessionMap = allMessageToSessionMap;
+        
+        // Display results and handle CLAUDE.md update
+        console.log('\n📊 Complete History Analysis Results:');
+        console.log(`❌ Mistakes to avoid: ${aiResults.mistakes.length}`);
+        console.log(`✅ Successful patterns: ${aiResults.successes.length}`);
+        console.log(`📊 Total messages analyzed: ${allHistoryMessages.length.toLocaleString()}`);
+        console.log(`📊 Total estimated tokens: ${totalTokens.toLocaleString()}`);
+        
+        if (aiResults.mistakes.length > 0) {
+          console.log('\n🚫 Mistakes to Avoid:');
+          aiResults.mistakes.forEach((mistake: any, i: number) => {
+            console.log(`  ${i + 1}. ${mistake.type}: ${mistake.lesson}`);
+          });
+        }
+        
+        if (aiResults.successes.length > 0) {
+          console.log('\n✨ Successful Patterns:');
+          aiResults.successes.forEach((success: any, i: number) => {
+            console.log(`  ${i + 1}. ${success.type}: ${success.lesson}`);
+          });
+        }
+        
+        console.log('\n👤 User Profile:');
+        console.log(`  OS: ${aiResults.userProfile.environment.os}`);
+        console.log(`  Style: ${aiResults.userProfile.style.verbosity}, ${aiResults.userProfile.style.techLevel} level`);
+        
+        if (aiResults.userProfile.preferences && aiResults.userProfile.preferences.length > 0) {
+          console.log('\n🎯 User Preferences:');
+          aiResults.userProfile.preferences.forEach((pref: string, i: number) => {
+            console.log(`  ${i + 1}. ${pref}`);
+          });
+        }
+        
+        if (aiResults.userProfile.boundaries && aiResults.userProfile.boundaries.length > 0) {
+          console.log('\n🚫 Boundaries & Constraints:');
+          aiResults.userProfile.boundaries.forEach((boundary: string, i: number) => {
+            console.log(`  ${i + 1}. ${boundary}`);
+          });
+        }
+        
+        if (aiResults.recommendations.length > 0) {
+          console.log('\n💡 Recommendations for Future Sessions:');
+          aiResults.recommendations.forEach((rec: string, i: number) => {
+            console.log(`  ${i + 1}. ${rec}`);
+          });
+        }
+        
+        // Handle CLAUDE.md update
+        const isPreviewMode = !options.update;
+        if (isPreviewMode) {
+          console.log('\n💡 Tip: Use --update flag to apply changes automatically next time');
+          const shouldApply = readlineSync.keyInYN('\n📝 Would you like to apply these changes to CLAUDE.md?');
+          
+          if (shouldApply) {
+            await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
+          } else {
+            console.log('\n👍 No changes applied. To apply automatically next time, run:');
+            console.log(`   mnemaris --all --update`);
+          }
+        } else {
+          await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
+        }
+        
+        return; // Exit early, batch processing complete
+      }
 
-      // Use recent sessions by default, all sessions with --all-sessions
-      const sessionsToAnalyze = options.allSessions ? 
-        project.sessions : 
-        project.sessions.slice(0, 10);
+      // Use recent sessions by default (this code only runs when --all is NOT used)
+      const sessionsToAnalyze = project.sessions.slice(0, 10);
 
+      // Collect messages based on token limit or message depth
       for (const session of sessionsToAnalyze) {
+        // Check limits before processing
+        if (useTokenLimit && currentTokenCount >= maxTokens) break;
+        if (!useTokenLimit && allMessages.length >= maxDepth) break;
+        
         console.log(`📄 Processing: ${session.filePath}`);
         const messages = JSONLParser.parseSessionFile(session.filePath);
         if (messages.length > 0) {
+          // Filter for substantial content first
+          const substantialMessages = messages.filter(hasSubstantialContent);
+          
+          const messagesToAdd: ClaudeMessage[] = [];
+          let sessionTokens = 0;
+          
+          // Add messages until we hit the limit
+          for (const msg of substantialMessages) {
+            if (useTokenLimit) {
+              const msgTokens = estimateTokens(msg);
+              if (currentTokenCount + msgTokens > maxTokens) break;
+              currentTokenCount += msgTokens;
+              sessionTokens += msgTokens;
+            } else {
+              if (allMessages.length + messagesToAdd.length >= maxDepth) break;
+            }
+            messagesToAdd.push(msg);
+          }
+          
           // Track which session each message came from
-          messages.forEach(msg => messageToSessionMap.set(msg, session.filePath));
-          allMessages.push(...messages);
+          messagesToAdd.forEach(msg => messageToSessionMap.set(msg, session.filePath));
+          allMessages.push(...messagesToAdd);
           processedSessions++;
-          console.log(`   ✅ Found ${messages.length} messages`);
+          
+          if (useTokenLimit) {
+            console.log(`   ✅ Found ${messagesToAdd.length} substantial messages (~${sessionTokens} tokens, ${messages.length} total)`);
+          } else {
+            console.log(`   ✅ Found ${messagesToAdd.length} substantial messages (${messages.length} total)`);
+          }
           
           if (processedSessions % 5 === 0 || processedSessions === sessionsToAnalyze.length) {
             console.log(`Processed ${processedSessions}/${sessionsToAnalyze.length} sessions...`);
@@ -232,8 +526,11 @@ program
         return;
       }
 
-      const maxDepth = parseInt(options.depth);
-      console.log(`\n🔍 Analyzing ${allMessages.length} messages (depth: ${maxDepth})...`);
+      if (useTokenLimit) {
+        console.log(`\n🔍 Analyzing ${allMessages.length} messages (~${currentTokenCount} tokens)...`);
+      } else {
+        console.log(`\n🔍 Analyzing ${allMessages.length} messages...`);
+      }
 
       let insights: any[] = [];
       let patterns: any[] = [];
@@ -247,22 +544,22 @@ program
           options.excludePatterns.split(',').map((p: string) => p.trim()) : 
           undefined;
           
-        const aiResults = await claudeAnalyzer.analyzeConversation(allMessages, maxDepth, options.debugMessages, messageToSessionMap, excludePatterns);
+        const aiResults = await claudeAnalyzer.analyzeConversation(allMessages, allMessages.length, options.debugMessages, messageToSessionMap, excludePatterns);
           
         console.log('\n📊 AI Analysis Results:');
         console.log(`❌ Mistakes to avoid: ${aiResults.mistakes.length}`);
         console.log(`✅ Successful patterns: ${aiResults.successes.length}`);
         
         if (aiResults.mistakes.length > 0) {
-          console.log('\n🚫 Top Mistakes to Avoid:');
-          aiResults.mistakes.slice(0, 3).forEach((mistake, i) => {
+          console.log('\n🚫 Mistakes to Avoid:');
+          aiResults.mistakes.forEach((mistake: any, i: number) => {
             console.log(`  ${i + 1}. ${mistake.type}: ${mistake.lesson}`);
           });
         }
         
         if (aiResults.successes.length > 0) {
           console.log('\n✨ Successful Patterns:');
-          aiResults.successes.slice(0, 3).forEach((success, i) => {
+          aiResults.successes.forEach((success: any, i: number) => {
             console.log(`  ${i + 1}. ${success.type}: ${success.lesson}`);
           });
         }
@@ -271,6 +568,20 @@ program
         console.log(`  OS: ${aiResults.userProfile.environment.os}`);
         console.log(`  Style: ${aiResults.userProfile.style.verbosity}, ${aiResults.userProfile.style.techLevel} level`);
         
+        if (aiResults.userProfile.preferences && aiResults.userProfile.preferences.length > 0) {
+          console.log('\n🎯 User Preferences:');
+          aiResults.userProfile.preferences.slice(0, 5).forEach((pref, i) => {
+            console.log(`  ${i + 1}. ${pref}`);
+          });
+        }
+        
+        if (aiResults.userProfile.boundaries && aiResults.userProfile.boundaries.length > 0) {
+          console.log('\n🚫 Boundaries & Constraints:');
+          aiResults.userProfile.boundaries.slice(0, 5).forEach((boundary, i) => {
+            console.log(`  ${i + 1}. ${boundary}`);
+          });
+        }
+        
         if (aiResults.recommendations.length > 0) {
           console.log('\n💡 Recommendations for Future Sessions:');
           aiResults.recommendations.forEach((rec, i) => {
@@ -278,9 +589,21 @@ program
           });
         }
         
-        // Update CLAUDE.md by default (unless --no-update)
-        if (!options.noUpdate) {
-          await updateClaudeMd(path || process.cwd(), aiResults, options.preview);
+        // Update CLAUDE.md based on mode
+        if (isPreviewMode) {
+          // Preview mode: ask if user wants to apply changes without showing preview
+          console.log('\n💡 Tip: Use --update flag to apply changes automatically next time');
+          const shouldApply = readlineSync.keyInYN('\n📝 Would you like to apply these changes to CLAUDE.md?');
+          
+          if (shouldApply) {
+            await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
+          } else {
+            console.log('\n👍 No changes applied. To apply automatically next time, run:');
+            console.log(`   mnemaris --update`);
+          }
+        } else {
+          // Direct update mode
+          await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
         }
         
         // For backward compatibility with export, create dummy insights/patterns
@@ -290,10 +613,10 @@ program
       } else {
         // Use pattern-matching analysis when requested
         console.log('🔍 Using pattern-matching analysis...');
-        const allInsights = AIInsightAnalyzer.analyzeConversation(allMessages.slice(-maxDepth));
+        const allInsights = AIInsightAnalyzer.analyzeConversation(allMessages);
         const confidenceThreshold = parseFloat(options.confidence);
         insights = AIInsightAnalyzer.filterByConfidence(allInsights, confidenceThreshold);
-        patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages.slice(-maxDepth));
+        patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages);
         
         console.log('\n📈 Pattern-Matching Analysis Results:');
         console.log(`AI Insights found: ${insights.length} (confidence ≥ ${options.confidence})`);
@@ -322,8 +645,12 @@ program
         }
       }
 
-      if (!options.noUpdate && !options.preview) {
+      if (options.update) {
         console.log('\n✨ Analysis complete! Your CLAUDE.md has been updated with AI insights.');
+      } else if (!options.patternOnly) {
+        // Message already shown in interactive prompt
+      } else {
+        console.log('\n👁️  Analysis complete! Run with --update to apply these changes to CLAUDE.md.');
       }
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -347,29 +674,25 @@ program
 
       for (const project of projectsToAnalyze) {
         console.log(`\n📊 Quick analysis: ${project.name}`);
+        console.log(`   Sessions: ${project.sessionCount}`);
         
-        // Analyze only recent sessions for overview
-        const recentSessions = project.sessions.slice(0, 3);
+        // Perform quick analysis
         const allMessages: ClaudeMessage[] = [];
-
-        for (const session of recentSessions) {
+        for (const session of project.sessions.slice(0, 3)) {
           const messages = JSONLParser.parseSessionFile(session.filePath);
           allMessages.push(...messages);
         }
-
+        
         if (allMessages.length > 0) {
           const insights = AIInsightAnalyzer.analyzeConversation(allMessages);
           const patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages);
           
-          console.log(`  Messages: ${allMessages.length} | Insights: ${insights.length} | Patterns: ${patterns.length}`);
-        } else {
-          console.log('  No messages to analyze');
+          console.log(`   Insights: ${insights.length}`);
+          console.log(`   Patterns: ${patterns.length}`);
         }
       }
-
-      console.log('\nUse "mnemaris analyze [project-name] --deep" for detailed analysis');
     } catch (error) {
-      console.error('Bulk analysis failed:', error);
+      console.error('Failed to analyze projects:', error);
       process.exit(1);
     }
   });
@@ -377,16 +700,56 @@ program
 program
   .command('export')
   .description('Export analysis results to different formats')
-  .argument('[project-name]', 'Project to export (or most recent if not specified)')
-  .option('--format <format>', 'Export format: json, markdown, csv', 'markdown')
+  .argument('<project-name>', 'Name of the project to export')
+  .option('--format <format>', 'Export format (json, markdown, csv)', 'json')
   .option('--output <path>', 'Output file path')
-  .option('--insights-only', 'Export only AI insights')
-  .option('--patterns-only', 'Export only user patterns')
-  .action(async (projectName: string | undefined, options) => {
+  .action(async (projectName, options) => {
     try {
-      // This will use the ReportExporter once it's implemented
-      console.log('🚀 Export functionality coming soon!');
-      console.log(`Would export ${projectName || 'recent project'} in ${options.format} format`);
+      console.log(`📦 Exporting analysis for project: ${projectName}`);
+      
+      // Find the project
+      const projects = await ProjectDiscovery.discoverProjects();
+      const project = projects.find(p => p.name.toLowerCase().includes(projectName.toLowerCase()));
+      
+      if (!project) {
+        console.error(`Project "${projectName}" not found`);
+        process.exit(1);
+      }
+      
+      // Analyze the project
+      const allMessages: ClaudeMessage[] = [];
+      for (const session of project.sessions) {
+        const messages = JSONLParser.parseSessionFile(session.filePath);
+        allMessages.push(...messages);
+      }
+      
+      const insights = AIInsightAnalyzer.analyzeConversation(allMessages);
+      const patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages);
+      
+      // Generate report
+      const report: AnalysisReport = {
+        projectName: project.name,
+        totalSessions: project.sessionCount,
+        totalMessages: allMessages.length,
+        analysisDate: new Date().toISOString(),
+        timeRange: {
+          from: allMessages[0]?.timestamp || new Date().toISOString(),
+          to: allMessages[allMessages.length - 1]?.timestamp || new Date().toISOString()
+        },
+        aiInsights: insights,
+        userPatterns: patterns,
+        summary: {
+          topInsightTypes: [],
+          topPatterns: [],
+          activityTrend: 'stable' as const
+        }
+      };
+      
+      // Export based on format
+      const outputPath = options.output || `${projectName}-analysis.${options.format}`;
+      await ReportExporter.exportReport(report, options.format, outputPath);
+      
+      console.log(`✅ Analysis exported to: ${outputPath}`);
     } catch (error) {
       console.error('Export failed:', error);
       process.exit(1);
@@ -396,54 +759,51 @@ program
 program
   .command('insights')
   .description('Focus on specific types of insights')
-  .argument('[project-name]', 'Project to analyze')
-  .option('--type <type>', 'Insight type: uncertainty, correction, learning, assumption, confusion, realization')
-  .option('--confidence <threshold>', 'Minimum confidence threshold', '0.7')
-  .action(async (projectName: string | undefined, options) => {
+  .argument('[project-name]', 'Name of the project (optional)')
+  .option('--type <type>', 'Type of insights to focus on (uncertainty, corrections, frustration, preferences)')
+  .action(async (projectName, options) => {
     try {
-      console.log('🧠 Focused insight analysis...\n');
+      // Implementation for insights command
+      console.log('🎯 Analyzing specific insights...');
       
+      // Find project
       let project;
       if (projectName) {
-        project = await ProjectDiscovery.getProjectInfo(projectName);
+        const projects = await ProjectDiscovery.discoverProjects();
+        project = projects.find(p => p.name.toLowerCase().includes(projectName.toLowerCase()));
       } else {
-        const recent = await ProjectDiscovery.getRecentProjects(1);
-        project = recent[0];
+        project = await ProjectDetector.detectCurrentProject();
       }
-
+      
       if (!project) {
-        console.error('No project found to analyze');
+        console.error('No project found');
         process.exit(1);
       }
-
-      console.log(`Analyzing insights in: ${project.name}`);
-
+      
+      // Analyze messages
       const allMessages: ClaudeMessage[] = [];
-      for (const session of project.sessions.slice(0, 5)) { // Limit to 5 recent sessions
+      for (const session of project.sessions.slice(0, 10)) {
         const messages = JSONLParser.parseSessionFile(session.filePath);
         allMessages.push(...messages);
       }
-
+      
       const insights = AIInsightAnalyzer.analyzeConversation(allMessages);
-      const threshold = parseFloat(options.confidence);
-      let filteredInsights = AIInsightAnalyzer.filterByConfidence(insights, threshold);
-
+      
+      // Filter by type if specified
       if (options.type) {
-        filteredInsights = filteredInsights.filter(insight => insight.type === options.type);
-        console.log(`\nFiltered to "${options.type}" insights:`);
-      }
-
-      console.log(`\nFound ${filteredInsights.length} insights (confidence ≥ ${threshold}):\n`);
-
-      filteredInsights.slice(0, 10).forEach((insight, index) => {
-        console.log(`${index + 1}. [${insight.type}] (${(insight.confidence * 100).toFixed(0)}%)`);
-        console.log(`   "${insight.content}"`);
-        console.log(`   Context: ${insight.context.slice(0, 100)}...`);
-        console.log(`   Session: ${insight.sessionId.slice(0, 8)}\n`);
-      });
-
-      if (filteredInsights.length > 10) {
-        console.log(`... and ${filteredInsights.length - 10} more insights`);
+        const filtered = insights.filter(i => i.type === options.type);
+        console.log(`Found ${filtered.length} insights of type "${options.type}"`);
+        filtered.slice(0, 10).forEach((insight, i) => {
+          console.log(`\n${i + 1}. ${insight.content}`);
+          console.log(`   Confidence: ${(insight.confidence * 100).toFixed(0)}%`);
+        });
+      } else {
+        // Show summary
+        const types = [...new Set(insights.map(i => i.type))];
+        types.forEach(type => {
+          const count = insights.filter(i => i.type === type).length;
+          console.log(`${type}: ${count} insights`);
+        });
       }
     } catch (error) {
       console.error('Insights analysis failed:', error);
@@ -451,12 +811,11 @@ program
     }
   });
 
-// Add help examples
 program.on('--help', () => {
   console.log('');
   console.log('Examples:');
-  console.log('  $ mnemaris                                          # Analyze current project with AI');
-  console.log('  $ mnemaris --preview                               # Preview CLAUDE.md changes');
+  console.log('  $ mnemaris                                          # Preview insights (no file changes)');
+  console.log('  $ mnemaris --update                                # Apply changes to CLAUDE.md');
   console.log('  $ mnemaris --pattern-only                          # Use pattern-matching instead of AI');
   console.log('  $ mnemaris --all-sessions --depth 500             # Deep analysis of all sessions');
   console.log('  $ mnemaris /path/to/project                        # Analyze specific project');
@@ -464,10 +823,10 @@ program.on('--help', () => {
   console.log('  $ mnemaris insights --type uncertainty            # Focus on specific insight types');
   console.log('');
   console.log('Advanced Options:');
-  console.log('  --no-update          Skip CLAUDE.md file updates');
+  console.log('  --update             Write changes to CLAUDE.md (default: preview only)');
   console.log('  --exclude-patterns   Exclude sessions matching patterns');
   console.log('  --debug              Show project detection details');
   console.log('');
 });
 
-program.parse();
+program.parseAsync(process.argv);

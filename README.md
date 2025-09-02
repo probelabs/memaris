@@ -1,159 +1,160 @@
+<div align="center">
+
 # Mnemaris
 
-> A memory-driven analysis tool for Claude Code conversations. Extract insights and improve future AI sessions.
+![Mnemaris](mnemaris.gif)
 
-Mnemaris analyzes your Claude Code conversation history to identify patterns, mistakes, and successful approaches. It creates actionable insights to help you improve future AI interactions by learning from past conversations.
+**Stop re-teaching your AI. Turn past sessions into persistent memory.**
 
-## Features
+[![npm version](https://badge.fury.io/js/@probelabs%2Fmnemaris.svg)](https://www.npmjs.com/package/@probelabs/mnemaris)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Part of Probe Ecosystem](https://img.shields.io/badge/Probe-Ecosystem-00ff88)](https://probelabs.com)
 
-- **Smart Project Detection**: Automatically detects Claude Code conversations in your current project
-- **AI-Powered Analysis**: Uses Claude Code SDK to analyze conversation patterns and extract insights
-- **Memory Profiles**: Creates profiles of your coding style, preferences, and common patterns
-- **Mistake Prevention**: Identifies recurring issues and provides actionable recommendations
-- **CLAUDE.md Integration**: Automatically updates project files with insights for future sessions
-- **Session Filtering**: Excludes SDK analysis sessions and focuses on meaningful conversations
+[Website](https://probelabs.com/mnemaris) • [Documentation](#-commands) • [NPM Package](https://www.npmjs.com/package/@probelabs/mnemaris)
 
-## Installation
+</div>
+
+---
+
+## What is Mnemaris?
+
+Mnemaris analyzes your Claude Code conversation history to extract patterns, preferences, and lessons learned. It turns every correction, rejected approach, and successful pattern into permanent memory that follows you across sessions.
+
+**The Problem:** Every time you start a new Claude Code session, you're teaching the same preferences again. "Don't use sudo with npm." "Prefer async/await." "Always add error boundaries."
+
+**The Solution:** Mnemaris reads your past sessions, identifies what worked and what didn't, then creates a personalized `CLAUDE.md` file with instructions tailored to your coding style.
+
+## 🚀 Quick Start
 
 ```bash
+# Install globally
 npm install -g @probelabs/mnemaris
+
+# Navigate to your project
+cd your-project
+
+# Preview insights (no file changes)
+mnemaris
+
+# Apply insights to CLAUDE.md
+mnemaris --update
 ```
 
-## Quick Start
+That's it! Mnemaris will analyze your Claude Code history and generate personalized instructions.
 
-Navigate to any project directory where you've used Claude Code:
+## 📖 How It Works
+
+<table>
+<tr>
+<td width="33%" align="center">
+
+**📝 Your Conversations**
+
+Every correction, preference, and rejected approach in your Claude Code sessions
+
+</td>
+<td width="33%" align="center">
+
+**🤖 AI Analysis**
+
+Extracts patterns, identifies mistakes to avoid, and learns your coding style
+
+</td>
+<td width="33%" align="center">
+
+**✨ Optimized CLAUDE.md**
+
+Personalized instructions that make every future session start smarter
+
+</td>
+</tr>
+</table>
+
+## 🎯 Key Features
+
+- **Smart Project Detection** - Automatically finds Claude Code conversations in your project
+- **AI-Powered Analysis** - Uses advanced pattern recognition to extract meaningful insights
+- **Memory Profiles** - Creates profiles of your coding style and preferences
+- **Mistake Prevention** - Identifies recurring issues and provides actionable recommendations
+- **Privacy First** - All analysis happens locally, your conversations never leave your machine
+
+## 📚 Commands
+
+### Basic Usage
 
 ```bash
-# Basic analysis
-mnemaris analyze
-
-# Recent sessions only (last 10)
-mnemaris analyze --recent
-
-# AI-powered deep analysis
-mnemaris analyze --ai-powered --depth 100
-
-# Update CLAUDE.md with recommendations
-mnemaris analyze --ai-powered --update-claude-md
-
-# Dry run to preview CLAUDE.md changes
-mnemaris analyze --ai-powered --update-claude-md --dry-run
+mnemaris                    # Preview insights (default)
+mnemaris --update          # Apply insights to CLAUDE.md
+mnemaris /path/to/project  # Analyze specific project
 ```
 
-## Commands
+### Advanced Options
 
-### `analyze [path]`
+| Option | Description |
+|--------|-------------|
+| `--update` | Write changes to CLAUDE.md (default: preview only) |
+| `--all-sessions` | Analyze all sessions instead of recent ones |
+| `--depth <n>` | Maximum messages to analyze (default: 200) |
+| `--pattern-only` | Use pattern-matching instead of AI analysis |
+| `--exclude-patterns` | Exclude sessions matching patterns |
+| `--debug` | Show debug information |
 
-Analyze Claude Code conversations in the current or specified project directory.
-
-**Options:**
-- `--recent` - Analyze only the 10 most recent sessions
-- `--ai-powered` - Use Claude Code SDK for deep AI analysis
-- `--depth <number>` - Maximum number of messages to analyze (default: 50)
-- `--confidence <number>` - Confidence threshold for pattern matching (default: 0.7)
-- `--exclude-patterns <patterns>` - Comma-separated patterns to exclude sessions
-- `--update-claude-md` - Update CLAUDE.md with recommendations
-- `--dry-run` - Preview CLAUDE.md changes without writing
-- `--debug` - Show project detection details
-- `--debug-messages` - Show truncated large messages with file paths
-
-### `scan`
-
-Scan and list all available Claude Code projects.
-
-### `export`
-
-Export analysis results in various formats (JSON, markdown).
-
-## How It Works
-
-1. **Project Detection**: Mnemaris scans your current directory and matches it with Claude Code conversation storage in `~/.claude/projects/`
-
-2. **Session Analysis**: Parses JSONL conversation files and extracts messages, filtering out SDK analysis sessions
-
-3. **Pattern Recognition**: Uses either pattern-matching algorithms or AI analysis to identify:
-   - Common mistakes and how to avoid them
-   - Successful interaction patterns
-   - User preferences and coding style
-   - Environmental context (OS, tools, etc.)
-
-4. **Insight Generation**: Creates actionable recommendations for improving future AI sessions
-
-5. **Memory Integration**: Optionally updates `CLAUDE.md` with insights that Claude Code can use in future conversations
-
-## Analysis Types
-
-### Pattern Matching (Default)
-Fast regex-based analysis that identifies:
-- Tool usage patterns
-- Error frequencies
-- Conversation structures
-- User behavior patterns
-
-### AI-Powered Analysis (Recommended)
-Uses Claude Code SDK for deeper analysis:
-- Contextual mistake identification
-- Success pattern recognition
-- Personalized recommendations
-- Style and preference profiling
-
-## Examples
+### Other Commands
 
 ```bash
-# Analyze current project with AI insights
-mnemaris analyze --ai-powered
+# Discover all Claude Code projects
+mnemaris scan
 
-# Quick analysis of recent sessions
-mnemaris analyze --recent --depth 25
+# Export analysis results
+mnemaris export my-project json
+mnemaris export my-project markdown
 
-# Update project memory with insights
-mnemaris analyze --ai-powered --update-claude-md
-
-# Preview recommendations without writing
-mnemaris analyze --ai-powered --update-claude-md --dry-run
-
-# Exclude certain session types
-mnemaris analyze --exclude-patterns "analysis,debug" --ai-powered
-
-# Debug project detection issues
-mnemaris analyze --debug
+# Focus on specific insights
+mnemaris insights --type preferences
 ```
 
-## Output
+## 🛠️ Requirements
 
-Mnemaris provides structured insights including:
+- Node.js 18+ or Bun runtime
+- Claude Code with existing conversation history
+- Optional: `ANTHROPIC_API_KEY` for AI-powered analysis (uses pattern-matching by default)
 
-- **Mistakes to Avoid**: Common errors and anti-patterns with specific examples
-- **Successful Patterns**: Effective approaches that led to good outcomes  
-- **User Profile**: Your coding style, preferences, and environment
-- **Recommendations**: Actionable advice for future Claude Code sessions
-
-## Requirements
-
-- Node.js ≥18.0.0
-- Claude Code (conversations stored in `~/.claude/projects/`)
-
-## Development
+## 🔧 Development
 
 ```bash
-# Clone and install
+# Clone the repository
 git clone https://github.com/probelabs/mnemaris.git
 cd mnemaris
+
+# Install dependencies
 bun install
 
-# Development mode
+# Run in development mode
 bun run dev
 
-# Build
+# Build for production
 bun run build
-
-# Test
-bun test
 ```
 
-## License
+## 🌐 Part of the Probe Ecosystem
 
-MIT
+Mnemaris is part of the [Probe ecosystem](https://probelabs.com)—tools dedicated to improving human and AI collaboration in development.
+
+- **[Probe](https://probelabs.com)** - Code search that understands context
+- **[Vow](https://probelabs.com/vow)** - Accountability gates for AI agents
+- **[AFK](https://probelabs.com/afk)** - Remote control for Claude Code via Telegram
+
+## 📄 License
+
+MIT © [Probe Labs](https://probelabs.com)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📮 Support
+
+Questions or feedback? Reach out at [hello@probelabs.com](mailto:hello@probelabs.com)
 
 ---
 
