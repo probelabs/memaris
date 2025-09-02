@@ -126,9 +126,13 @@ Naturally merge the conversation analysis insights into this CLAUDE.md file. Add
 ${existingContent || '[File does not exist yet]'}
 </current-claude-md>
 
-<analysis-results>
+<analysis-data>
+This XML tag contains the structured analysis results from examining Claude Code conversation history. 
+It includes AI-generated insights about user patterns, mistakes to avoid, successful approaches, and preferences.
+Base your CLAUDE.md updates ONLY on the data contained within this tag.
+
 ${JSON.stringify(analysisResults, null, 2)}
-</analysis-results>
+</analysis-data>
 
 Guidelines for merging:
 - Keep existing content that's still relevant
@@ -137,6 +141,7 @@ Guidelines for merging:
 - Group related insights logically
 - Don't duplicate existing information
 - Use clear, direct language that other AIs can easily follow
+- Base all updates exclusively on the data provided within the <analysis-data> XML tag above
 
 IMPORTANT: You MUST actually use the tools to update the file, not just describe what you would do.
 
