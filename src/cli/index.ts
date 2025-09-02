@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { ProjectDiscovery } from '../parsers/project-discovery.js';
 import { ProjectDetector } from '../parsers/project-detector.js';
 import { JSONLParser } from '../parsers/jsonl-parser.js';
+import { processBatches, estimateTokens } from '../utils/batching.js';
 
 // Helper function to check if a message has substantial content
 function hasSubstantialContent(message: ClaudeMessage): boolean {
@@ -22,79 +23,6 @@ function hasSubstantialContent(message: ClaudeMessage): boolean {
   return content.trim().length > 10;
 }
 
-// Helper function to estimate tokens in a message (roughly 4 chars = 1 token)
-function estimateTokens(message: ClaudeMessage): number {
-  let content = '';
-  if (message.type === 'user') {
-    content = JSONLParser.extractUserText(message);
-  } else if (message.type === 'assistant') {
-    const textBlocks = JSONLParser.extractAssistantText(message);
-    content = textBlocks.join('\n');
-  } else if (message.type === 'summary' && message.summary) {
-    content = `[Session Summary: ${message.summary}]`;
-  } else {
-    content = '[Non-text message]';
-  }
-  
-  return Math.ceil(content.length / 4); // Rough estimate: 4 chars ≈ 1 token
-}
-
-// Helper function to merge multiple AIAnalysisResult objects
-function mergeAnalysisResults(results: any[]): any {
-  if (results.length === 0) return null;
-  if (results.length === 1) return results[0];
-
-  const merged = {
-    mistakes: [] as any[],
-    successes: [] as any[],
-    userProfile: {
-      environment: {
-        os: results[0].userProfile.environment.os,
-        restrictions: [] as string[],
-        tools: [] as string[]
-      },
-      style: {
-        verbosity: results[0].userProfile.style.verbosity,
-        techLevel: results[0].userProfile.style.techLevel,
-        patience: results[0].userProfile.style.patience
-      },
-      boundaries: [] as string[],
-      preferences: [] as string[]
-    },
-    recommendations: [] as string[]
-  };
-
-  // Merge all mistakes and successes
-  for (const result of results) {
-    merged.mistakes.push(...(result.mistakes || []));
-    merged.successes.push(...(result.successes || []));
-    merged.recommendations.push(...(result.recommendations || []));
-    
-    // Merge user profile arrays
-    if (result.userProfile) {
-      merged.userProfile.boundaries.push(...(result.userProfile.boundaries || []));
-      merged.userProfile.preferences.push(...(result.userProfile.preferences || []));
-      merged.userProfile.environment.restrictions.push(...(result.userProfile.environment.restrictions || []));
-      merged.userProfile.environment.tools.push(...(result.userProfile.environment.tools || []));
-    }
-  }
-
-  // Deduplicate arrays
-  merged.userProfile.boundaries = [...new Set(merged.userProfile.boundaries)];
-  merged.userProfile.preferences = [...new Set(merged.userProfile.preferences)];
-  merged.userProfile.environment.restrictions = [...new Set(merged.userProfile.environment.restrictions)];
-  merged.userProfile.environment.tools = [...new Set(merged.userProfile.environment.tools)];
-  merged.recommendations = [...new Set(merged.recommendations)];
-
-  // Sort results by importance/frequency (but don't limit them)
-  merged.mistakes = merged.mistakes
-    .sort((a, b) => (b.lesson || '').length - (a.lesson || '').length);
-  
-  merged.successes = merged.successes
-    .sort((a, b) => (b.lesson || '').length - (a.lesson || '').length);
-
-  return merged;
-}
 import { AIInsightAnalyzer } from '../analyzers/ai-insights.js';
 import { UserPatternAnalyzer } from '../analyzers/user-patterns.js';
 import { ClaudeCodeAnalyzer } from '../analyzers/claude-code-analysis.js';
@@ -332,80 +260,18 @@ program
         const totalTokens = allHistoryMessages.reduce((sum, msg) => sum + estimateTokens(msg), 0);
         console.log(`📊 Estimated total tokens: ${totalTokens.toLocaleString()}`);
         
-        // Calculate batches needed
         const batchSize = parseInt(options.batchSize);
-        const batchesNeeded = Math.ceil(totalTokens / batchSize);
-        const estimatedTotalMinutes = batchesNeeded * 1; // ~1 minute per batch
-        console.log(`📦 Processing in ${batchesNeeded} batches of ~${batchSize.toLocaleString()} tokens each`);
-        console.log(`⏱️  Estimated total time: ~${estimatedTotalMinutes} minutes\n`);
         
-        // Process each batch with ETA tracking
-        const batchResults: any[] = [];
-        let processedMessages = 0;
-        const startTime = Date.now();
-        
-        for (let batchNum = 1; batchNum <= batchesNeeded; batchNum++) {
-          const remainingBatches = batchesNeeded - batchNum + 1;
-          const estimatedMinutesRemaining = remainingBatches * 1; // ~1 minute per batch
-          
-          console.log(`🔄 Processing batch ${batchNum}/${batchesNeeded} (ETA: ~${estimatedMinutesRemaining} min)...`);
-          
-          // Collect messages for this batch
-          const batchMessages: ClaudeMessage[] = [];
-          let batchTokenCount = 0;
-          
-          while (processedMessages < allHistoryMessages.length && batchTokenCount < batchSize) {
-            const msg = allHistoryMessages[processedMessages]!; // Assert non-null since we check length
-            const msgTokens = estimateTokens(msg);
-            
-            if (batchTokenCount + msgTokens > batchSize && batchMessages.length > 0) {
-              break; // Don't exceed batch size
-            }
-            
-            batchMessages.push(msg);
-            batchTokenCount += msgTokens;
-            processedMessages++;
-          }
-          
-          console.log(`   📊 Batch ${batchNum}: ${batchMessages.length} messages (~${batchTokenCount} tokens)`);
-          
-          // Analyze this batch
-          const batchStartTime = Date.now();
-          const claudeAnalyzer = new ClaudeCodeAnalyzer();
-          const excludePatterns = options.excludePatterns ? 
+        // Use shared batching logic
+        const batchOptions = {
+          batchSize,
+          excludePatterns: options.excludePatterns ? 
             options.excludePatterns.split(',').map((p: string) => p.trim()) : 
-            undefined;
-          
-          const batchResult = await claudeAnalyzer.analyzeConversation(
-            batchMessages, 
-            batchMessages.length, 
-            options.debugMessages, 
-            allMessageToSessionMap, 
-            excludePatterns
-          );
-          
-          batchResults.push(batchResult);
-          
-          // Calculate actual elapsed time and adjust ETA for remaining batches
-          const batchElapsedSeconds = Math.round((Date.now() - batchStartTime) / 1000);
-          const totalElapsedMinutes = Math.round((Date.now() - startTime) / 60000);
-          const avgBatchTimeMinutes = totalElapsedMinutes / batchNum;
-          const remainingBatchesAfterThis = batchesNeeded - batchNum;
-          const adjustedETA = Math.round(remainingBatchesAfterThis * avgBatchTimeMinutes);
-          
-          console.log(`   ✅ Batch ${batchNum} complete (${batchElapsedSeconds}s): ${batchResult.mistakes.length} mistakes, ${batchResult.successes.length} successes`);
-          
-          if (remainingBatchesAfterThis > 0) {
-            console.log(`   ⏱️  Remaining: ${remainingBatchesAfterThis} batches (~${adjustedETA} min ETA)\n`);
-          } else {
-            console.log(`   🎉 All batches complete! Total time: ${totalElapsedMinutes} min\n`);
-          }
-        }
-        
-        // Merge all batch results
-        console.log('🔄 Merging all batch results...');
-        const aiResults = mergeAnalysisResults(batchResults);
-        console.log(`✅ Final merged results: ${aiResults.mistakes.length} mistakes, ${aiResults.successes.length} successes`);
+            undefined,
+          debugMessages: options.debugMessages,
+          messageToSessionMap: allMessageToSessionMap
+        };
+        const aiResults = await processBatches(allHistoryMessages, batchOptions);
         
         // Continue with merged results (skip normal collection)
         allMessages.push(...allHistoryMessages.slice(0, 100)); // Add some for display
@@ -549,7 +415,34 @@ program
           options.excludePatterns.split(',').map((p: string) => p.trim()) : 
           undefined;
           
-        const aiResults = await claudeAnalyzer.analyzeConversation(allMessages, allMessages.length, options.debugMessages, messageToSessionMap, excludePatterns);
+        // Calculate appropriate maxDepth based on limits
+        const effectiveDepth = useTokenLimit ? 
+          Math.min(allMessages.length, maxTokens / 50) : // Rough estimate: 50 tokens per message average
+          Math.min(allMessages.length, maxDepth || 100);
+          
+        // Determine if batching is needed based on total token count
+        const totalTokens = allMessages.reduce((sum, msg) => sum + estimateTokens(msg), 0);
+        const batchSizeLimit = parseInt(options.batchSize);
+        const needsBatching = totalTokens > batchSizeLimit;
+        
+        console.log(`📊 Estimated total tokens: ${totalTokens.toLocaleString()}`);
+        
+        let aiResults: any;
+        if (needsBatching) {
+          console.log('🔄 Using batching due to large token count...');
+          // Use shared batching logic
+          const batchOptions = {
+            batchSize: batchSizeLimit,
+            excludePatterns,
+            debugMessages: options.debugMessages,
+            messageToSessionMap
+          };
+          aiResults = await processBatches(allMessages, batchOptions);
+        } else {
+          console.log('🚀 Using single analysis (tokens within limits)...');
+          // Use single analysis for smaller datasets
+          aiResults = await claudeAnalyzer.analyzeConversation(allMessages, effectiveDepth, options.debugMessages, messageToSessionMap, excludePatterns);
+        }
           
         console.log('\n📊 AI Analysis Results:');
         console.log(`❌ Mistakes to avoid: ${aiResults.mistakes.length}`);
@@ -575,21 +468,21 @@ program
         
         if (aiResults.userProfile.preferences && aiResults.userProfile.preferences.length > 0) {
           console.log('\n🎯 User Preferences:');
-          aiResults.userProfile.preferences.slice(0, 5).forEach((pref, i) => {
+          aiResults.userProfile.preferences.slice(0, 5).forEach((pref: any, i: number) => {
             console.log(`  ${i + 1}. ${pref}`);
           });
         }
         
         if (aiResults.userProfile.boundaries && aiResults.userProfile.boundaries.length > 0) {
           console.log('\n🚫 Boundaries & Constraints:');
-          aiResults.userProfile.boundaries.slice(0, 5).forEach((boundary, i) => {
+          aiResults.userProfile.boundaries.slice(0, 5).forEach((boundary: any, i: number) => {
             console.log(`  ${i + 1}. ${boundary}`);
           });
         }
         
         if (aiResults.recommendations.length > 0) {
           console.log('\n💡 Recommendations for Future Sessions:');
-          aiResults.recommendations.forEach((rec, i) => {
+          aiResults.recommendations.forEach((rec: any, i: number) => {
             console.log(`  ${i + 1}. ${rec}`);
           });
         }
