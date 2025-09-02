@@ -115,8 +115,8 @@ const program = new Command();
 
 program
   .name('mnemaris')
-  .description('Analyze Claude Code conversation history to extract AI insights and user patterns')
-  .version('1.0.0');
+  .description('Analyze Claude Code conversation history to extract AI insights and improve future sessions')
+  .version('0.2.0');
 
 program
   .command('scan')
@@ -149,20 +149,19 @@ program
     }
   });
 
+// Default action when no command is specified
 program
-  .command('analyze')
   .argument('[path]', 'Path to project directory (defaults to current directory)')
-  .description('Analyze Claude Code conversations for the specified or current project directory')
-  .option('--deep', 'Perform deep analysis of all sessions')
-  .option('--recent', 'Focus on recent sessions only') 
-  .option('--ai-powered', 'Use AI-powered analysis with Claude (requires ANTHROPIC_API_KEY)')
-  .option('--depth <number>', 'Maximum number of messages to analyze (default: 100)', '100')
+  .description('Analyze Claude Code conversations and improve future AI sessions')
+  .option('--pattern-only', 'Use pattern-matching analysis instead of AI-powered')
+  .option('--no-update', 'Skip updating CLAUDE.md file')
+  .option('--all-sessions', 'Analyze all sessions instead of recent ones')
+  .option('--depth <number>', 'Maximum number of messages to analyze (default: 200)', '200')
   .option('--confidence <threshold>', 'Minimum confidence threshold for insights (0-1)', '0.5')
   .option('--debug', 'Show debug information about project detection')
   .option('--debug-messages', 'Show debug information for large messages (>1000 tokens)')
-  .option('--exclude-patterns <patterns>', 'Comma-separated patterns to exclude sessions (e.g. "TASK:,You are analyzing")')
-  .option('--update-claude-md', 'Update CLAUDE.md with analysis recommendations using Claude Code SDK')
-  .option('--dry-run', 'Show proposed CLAUDE.md changes without writing them (requires --update-claude-md)')
+  .option('--exclude-patterns <patterns>', 'Comma-separated patterns to exclude sessions')
+  .option('--preview', 'Show proposed CLAUDE.md changes without writing them')
   .action(async (path, options) => {
     try {
       if (options.debug) {
@@ -170,9 +169,9 @@ program
         return;
       }
 
-      // Validate dry-run usage
-      if (options.dryRun && !options.updateClaudeMd) {
-        console.error('❌ Error: --dry-run can only be used with --update-claude-md');
+      // Validate preview usage
+      if (options.preview && options.noUpdate) {
+        console.error('❌ Error: --preview cannot be used with --no-update');
         process.exit(1);
       }
 
@@ -182,27 +181,33 @@ program
       const project = await ProjectDetector.detectCurrentProject(path);
       
       if (!project) {
-        console.log('\n💡 Troubleshooting tips:');
-        console.log('1. Make sure you are in a directory where you\'ve used Claude Code');
-        console.log('2. Check that Claude Code has created conversation files');
-        console.log('3. Run with --debug to see detection details');
-        console.log('4. Use the "scan" command to see all available projects');
+        console.log('\n🔍 No project detected. Let me scan for available projects...');
+        const projects = await ProjectDiscovery.discoverProjects();
+        
+        if (projects.length === 0) {
+          console.log('\n💡 No Claude Code projects found. Make sure you\'ve used Claude Code in this directory.');
+        } else {
+          console.log(`\nFound ${projects.length} projects:`);
+          projects.slice(0, 5).forEach((p, i) => {
+            console.log(`  ${i + 1}. ${p.name} (${p.sessionCount} sessions)`);
+          });
+          console.log('\nUse: mnemaris /path/to/project');
+        }
         process.exit(1);
       }
 
       console.log(`🎯 Match type: ${project.matchType}`);
       console.log(`📊 Found ${project.sessionCount} conversation sessions\n`);
-
       console.log(`📊 Analyzing project: ${project.name}`);
 
       const allMessages: ClaudeMessage[] = [];
       const messageToSessionMap = new Map<ClaudeMessage, string>();
       let processedSessions = 0;
 
-      // Limit sessions for recent mode
-      const sessionsToAnalyze = options.recent ? 
-        project.sessions.slice(0, 10) : 
-        project.sessions;
+      // Use recent sessions by default, all sessions with --all-sessions
+      const sessionsToAnalyze = options.allSessions ? 
+        project.sessions : 
+        project.sessions.slice(0, 10);
 
       for (const session of sessionsToAnalyze) {
         console.log(`📄 Processing: ${session.filePath}`);
@@ -233,9 +238,9 @@ program
       let insights: any[] = [];
       let patterns: any[] = [];
         
-      if (options.aiPowered) {
-        // Use Claude Code SDK analysis (no API key required)
-        console.log('🚀 Using Claude Code SDK for AI analysis...');
+      if (!options.patternOnly) {
+        // Use Claude Code SDK analysis by default
+        console.log('🚀 Using AI-powered analysis...');
         const claudeAnalyzer = new ClaudeCodeAnalyzer();
         // Parse exclude patterns if provided
         const excludePatterns = options.excludePatterns ? 
@@ -244,88 +249,88 @@ program
           
         const aiResults = await claudeAnalyzer.analyzeConversation(allMessages, maxDepth, options.debugMessages, messageToSessionMap, excludePatterns);
           
-          console.log('\n📊 AI Analysis Results:');
-          console.log(`❌ Mistakes to avoid: ${aiResults.mistakes.length}`);
-          console.log(`✅ Successful patterns: ${aiResults.successes.length}`);
-          
-          if (aiResults.mistakes.length > 0) {
-            console.log('\n🚫 Top Mistakes to Avoid:');
-            aiResults.mistakes.slice(0, 3).forEach((mistake, i) => {
-              console.log(`  ${i + 1}. ${mistake.type}: ${mistake.lesson}`);
-            });
-          }
-          
-          if (aiResults.successes.length > 0) {
-            console.log('\n✨ Successful Patterns:');
-            aiResults.successes.slice(0, 3).forEach((success, i) => {
-              console.log(`  ${i + 1}. ${success.type}: ${success.lesson}`);
-            });
-          }
-          
-          console.log('\n👤 User Profile:');
-          console.log(`  OS: ${aiResults.userProfile.environment.os}`);
-          console.log(`  Style: ${aiResults.userProfile.style.verbosity}, ${aiResults.userProfile.style.techLevel} level`);
-          
-          if (aiResults.recommendations.length > 0) {
-            console.log('\n💡 Recommendations for Future Sessions:');
-            aiResults.recommendations.forEach((rec, i) => {
-              console.log(`  ${i + 1}. ${rec}`);
-            });
-          }
-          
-          // Update CLAUDE.md if requested
-          if (options.updateClaudeMd) {
-            await updateClaudeMd(path || process.cwd(), aiResults, options.dryRun);
-          }
-          
-          // For backward compatibility with export, create dummy insights/patterns
-          insights = [];
-          patterns = [];
+        console.log('\n📊 AI Analysis Results:');
+        console.log(`❌ Mistakes to avoid: ${aiResults.mistakes.length}`);
+        console.log(`✅ Successful patterns: ${aiResults.successes.length}`);
+        
+        if (aiResults.mistakes.length > 0) {
+          console.log('\n🚫 Top Mistakes to Avoid:');
+          aiResults.mistakes.slice(0, 3).forEach((mistake, i) => {
+            console.log(`  ${i + 1}. ${mistake.type}: ${mistake.lesson}`);
+          });
+        }
+        
+        if (aiResults.successes.length > 0) {
+          console.log('\n✨ Successful Patterns:');
+          aiResults.successes.slice(0, 3).forEach((success, i) => {
+            console.log(`  ${i + 1}. ${success.type}: ${success.lesson}`);
+          });
+        }
+        
+        console.log('\n👤 User Profile:');
+        console.log(`  OS: ${aiResults.userProfile.environment.os}`);
+        console.log(`  Style: ${aiResults.userProfile.style.verbosity}, ${aiResults.userProfile.style.techLevel} level`);
+        
+        if (aiResults.recommendations.length > 0) {
+          console.log('\n💡 Recommendations for Future Sessions:');
+          aiResults.recommendations.forEach((rec, i) => {
+            console.log(`  ${i + 1}. ${rec}`);
+          });
+        }
+        
+        // Update CLAUDE.md by default (unless --no-update)
+        if (!options.noUpdate) {
+          await updateClaudeMd(path || process.cwd(), aiResults, options.preview);
+        }
+        
+        // For backward compatibility with export, create dummy insights/patterns
+        insights = [];
+        patterns = [];
 
-        } else {
-          // Use regular pattern-matching analysis
-          console.log('🔍 Using pattern-matching analysis...');
-          const allInsights = AIInsightAnalyzer.analyzeConversation(allMessages.slice(-maxDepth));
-          const confidenceThreshold = parseFloat(options.confidence);
-          insights = AIInsightAnalyzer.filterByConfidence(allInsights, confidenceThreshold);
-          patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages.slice(-maxDepth));
+      } else {
+        // Use pattern-matching analysis when requested
+        console.log('🔍 Using pattern-matching analysis...');
+        const allInsights = AIInsightAnalyzer.analyzeConversation(allMessages.slice(-maxDepth));
+        const confidenceThreshold = parseFloat(options.confidence);
+        insights = AIInsightAnalyzer.filterByConfidence(allInsights, confidenceThreshold);
+        patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages.slice(-maxDepth));
+        
+        console.log('\n📈 Pattern-Matching Analysis Results:');
+        console.log(`AI Insights found: ${insights.length} (confidence ≥ ${options.confidence})`);
+        console.log(`User Patterns found: ${patterns.length}`);
+
+        if (insights.length > 0) {
+          const insightTypes = insights.reduce((acc, insight) => {
+            acc[insight.type] = (acc[insight.type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          console.log('\n🧠 Top AI Insights:');
+          Object.entries(insightTypes)
+            .sort(([,a], [,b]) => (b as number) - (a as number))
+            .slice(0, 5)
+            .forEach(([type, count]) => {
+              console.log(`  ${type}: ${count} instances`);
+            });
         }
 
-        // For non-AI-powered analysis, show traditional results
-        if (!options.aiPowered) {
-          console.log('\n📈 Pattern-Matching Analysis Results:');
-          console.log(`AI Insights found: ${insights.length} (confidence ≥ ${options.confidence})`);
-          console.log(`User Patterns found: ${patterns.length}`);
-
-          if (insights.length > 0) {
-            const insightTypes = insights.reduce((acc, insight) => {
-              acc[insight.type] = (acc[insight.type] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
-            
-            console.log('\n🧠 Top AI Insights:');
-            Object.entries(insightTypes)
-              .sort(([,a], [,b]) => (b as number) - (a as number))
-              .slice(0, 5)
-              .forEach(([type, count]) => {
-                console.log(`  ${type}: ${count} instances`);
-              });
-          }
-
-          if (patterns.length > 0) {
-            console.log('\n👤 Top User Patterns:');
-            patterns.slice(0, 3).forEach(pattern => {
-              console.log(`  ${pattern.type}: ${pattern.pattern} (${pattern.frequency}x)`);
-            });
-          }
+        if (patterns.length > 0) {
+          console.log('\n👤 Top User Patterns:');
+          patterns.slice(0, 3).forEach(pattern => {
+            console.log(`  ${pattern.type}: ${pattern.pattern} (${pattern.frequency}x)`);
+          });
         }
+      }
 
-        console.log(`\nUse export commands to generate detailed reports.`);
+      if (!options.noUpdate && !options.preview) {
+        console.log('\n✨ Analysis complete! Your CLAUDE.md has been updated with AI insights.');
+      }
     } catch (error) {
       console.error('Analysis failed:', error);
       process.exit(1);
     }
   });
+
 
 program
   .command('analyze-all')
@@ -450,15 +455,18 @@ program
 program.on('--help', () => {
   console.log('');
   console.log('Examples:');
-  console.log('  $ mnemaris scan                                      # Discover all projects');
-  console.log('  $ mnemaris analyze --recent --depth 50              # Analyze recent 50 messages');
-  console.log('  $ mnemaris analyze my-project --ai-powered          # AI-powered deep analysis');
-  console.log('  $ mnemaris analyze --recent --ai-powered --depth 200 # AI analysis of 200 recent messages');
-  console.log('  $ mnemaris insights --type uncertainty              # Focus on AI uncertainty patterns');
-  console.log('  $ mnemaris export my-project --format json         # Export results as JSON');
+  console.log('  $ mnemaris                                          # Analyze current project with AI');
+  console.log('  $ mnemaris --preview                               # Preview CLAUDE.md changes');
+  console.log('  $ mnemaris --pattern-only                          # Use pattern-matching instead of AI');
+  console.log('  $ mnemaris --all-sessions --depth 500             # Deep analysis of all sessions');
+  console.log('  $ mnemaris /path/to/project                        # Analyze specific project');
+  console.log('  $ mnemaris scan                                    # Discover all available projects');
+  console.log('  $ mnemaris insights --type uncertainty            # Focus on specific insight types');
   console.log('');
-  console.log('Environment Variables:');
-  console.log('  ANTHROPIC_API_KEY    Required for --ai-powered analysis');
+  console.log('Advanced Options:');
+  console.log('  --no-update          Skip CLAUDE.md file updates');
+  console.log('  --exclude-patterns   Exclude sessions matching patterns');
+  console.log('  --debug              Show project detection details');
   console.log('');
 });
 

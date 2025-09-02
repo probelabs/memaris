@@ -1,6 +1,6 @@
 {
   "name": "@probelabs/mnemaris",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A memory-driven analysis tool for Claude Code conversations. Extract insights and improve future AI sessions.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
