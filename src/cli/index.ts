@@ -211,7 +211,7 @@ const program = new Command();
 program
   .name('mnemaris')
   .description('Analyze Claude Code conversation history to extract AI insights and improve future sessions')
-  .version('0.2.0');
+  .version('0.3.0');
 
 program
   .command('scan')
