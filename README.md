@@ -6,11 +6,11 @@
 
 **Stop re-teaching your AI. Turn past sessions into persistent memory.**
 
-[![npm version](https://badge.fury.io/js/@probelabs%2Fmnemaris.svg)](https://www.npmjs.com/package/@probelabs/mnemaris)
+[![npm version](https://badge.fury.io/js/@probelabs%2Fmemaris.svg)](https://www.npmjs.com/package/@probelabs/memaris)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Part of Probe Ecosystem](https://img.shields.io/badge/Probe-Ecosystem-00ff88)](https://probelabs.com)
 
-[Website](https://probelabs.com/memaris) • [Documentation](#-commands) • [NPM Package](https://www.npmjs.com/package/@probelabs/mnemaris)
+[Website](https://probelabs.com/memaris) • [Documentation](#-commands) • [NPM Package](https://www.npmjs.com/package/@probelabs/memaris)
 
 </div>
 
@@ -31,10 +31,10 @@ Memaris analyzes your Claude Code conversation history to extract patterns, pref
 cd your-project
 
 # Preview insights (no file changes)
-npx -y @probelabs/mnemaris
+npx -y @probelabs/memaris
 
 # Apply insights to CLAUDE.md  
-npx -y @probelabs/mnemaris --update
+npx -y @probelabs/memaris --update
 ```
 
 That's it! No installation needed - just run and go. Memaris will analyze your Claude Code history and generate personalized instructions.
@@ -82,49 +82,49 @@ Personalized instructions that make every future session start smarter
 ### Basic Usage
 
 ```bash
-npx -y @probelabs/mnemaris                    # Preview insights (default)
-npx -y @probelabs/mnemaris --update          # Apply insights to CLAUDE.md
-npx -y @probelabs/mnemaris /path/to/project  # Analyze specific project
+npx -y @probelabs/memaris                    # Preview insights (default)
+npx -y @probelabs/memaris --update          # Apply insights to CLAUDE.md
+npx -y @probelabs/memaris /path/to/project  # Analyze specific project
 ```
 
 ### Advanced Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--update` | Write changes to CLAUDE.md (default: preview only) | `npx -y @probelabs/mnemaris --update` |
-| `--all` | Analyze all conversation history in batches | `npx -y @probelabs/mnemaris --all --update` |
-| `--batch-size <n>` | Token batch size when using --all (default: 50000) | `npx -y @probelabs/mnemaris --all --batch-size 25000` |
-| `--depth <n>` | Maximum messages to analyze (deprecated, use --tokens) | `npx -y @probelabs/mnemaris --depth 100` |
-| `--tokens <n>` | Maximum tokens to analyze (default: 50000) | `npx -y @probelabs/mnemaris --tokens 25000` |
-| `--pattern-only` | Use pattern-matching instead of AI analysis | `npx -y @probelabs/mnemaris --pattern-only` |
-| `--exclude-patterns` | Exclude sessions matching patterns | `npx -y @probelabs/mnemaris --exclude-patterns "debug,test"` |
-| `--debug` | Show debug information | `npx -y @probelabs/mnemaris --debug` |
+| `--update` | Write changes to CLAUDE.md (default: preview only) | `npx -y @probelabs/memaris --update` |
+| `--all` | Analyze all conversation history in batches | `npx -y @probelabs/memaris --all --update` |
+| `--batch-size <n>` | Token batch size when using --all (default: 50000) | `npx -y @probelabs/memaris --all --batch-size 25000` |
+| `--depth <n>` | Maximum messages to analyze (deprecated, use --tokens) | `npx -y @probelabs/memaris --depth 100` |
+| `--tokens <n>` | Maximum tokens to analyze (default: 50000) | `npx -y @probelabs/memaris --tokens 25000` |
+| `--pattern-only` | Use pattern-matching instead of AI analysis | `npx -y @probelabs/memaris --pattern-only` |
+| `--exclude-patterns` | Exclude sessions matching patterns | `npx -y @probelabs/memaris --exclude-patterns "debug,test"` |
+| `--debug` | Show debug information | `npx -y @probelabs/memaris --debug` |
 
 ### Pro Tips
 
 ```bash
 # For large projects with lots of history
-npx -y @probelabs/mnemaris --all --batch-size 30000 --update
+npx -y @probelabs/memaris --all --batch-size 30000 --update
 
 # Quick analysis for recent work only
-npx -y @probelabs/mnemaris --tokens 10000 --update
+npx -y @probelabs/memaris --tokens 10000 --update
 
 # Pattern-only analysis (faster, no API key needed)
-npx -y @probelabs/mnemaris --pattern-only --update
+npx -y @probelabs/memaris --pattern-only --update
 ```
 
 ### Other Commands
 
 ```bash
 # Discover all Claude Code projects
-npx -y @probelabs/mnemaris scan
+npx -y @probelabs/memaris scan
 
 # Export analysis results
-npx -y @probelabs/mnemaris export my-project json
-npx -y @probelabs/mnemaris export my-project markdown
+npx -y @probelabs/memaris export my-project json
+npx -y @probelabs/memaris export my-project markdown
 
 # Focus on specific insights
-npx -y @probelabs/mnemaris insights --type preferences
+npx -y @probelabs/memaris insights --type preferences
 ```
 
 ## 🛠️ Requirements
@@ -145,14 +145,14 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 ls ~/.claude/projects/
 ```
 
-> **Note:** Mnemaris works great with pattern-matching analysis (no API key required), but AI-powered analysis provides much richer insights.
+> **Note:** Memaris works great with pattern-matching analysis (no API key required), but AI-powered analysis provides much richer insights.
 
 ## 🔧 Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/probelabs/mnemaris.git
-cd mnemaris
+git clone https://github.com/probelabs/memaris.git
+cd memaris
 
 # Install dependencies
 bun install
@@ -177,10 +177,10 @@ ls ~/.claude/projects/
 ### "Project not detected"
 ```bash
 # Use absolute path
-npx -y @probelabs/mnemaris /full/path/to/your/project --debug
+npx -y @probelabs/memaris /full/path/to/your/project --debug
 
 # Or use the scan command to see all detected projects
-npx -y @probelabs/mnemaris scan
+npx -y @probelabs/memaris scan
 ```
 
 ### AI Analysis Not Working
@@ -189,16 +189,16 @@ npx -y @probelabs/mnemaris scan
 echo $ANTHROPIC_API_KEY
 
 # Use pattern-only analysis as fallback
-npx -y @probelabs/mnemaris --pattern-only --update
+npx -y @probelabs/memaris --pattern-only --update
 ```
 
 ### Performance Issues
 ```bash
 # Reduce analysis scope
-npx -y @probelabs/mnemaris --tokens 10000 --update
+npx -y @probelabs/memaris --tokens 10000 --update
 
 # Use smaller batch sizes
-npx -y @probelabs/mnemaris --all --batch-size 25000 --update
+npx -y @probelabs/memaris --all --batch-size 25000 --update
 ```
 
 ## 🌐 Part of the Probe Ecosystem

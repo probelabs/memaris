@@ -40,7 +40,7 @@
       "Read(/Users/leonidbugaev/go/src/vow/**)",
       "Read(/Users/leonidbugaev/go/src/vow/**)",
       "Bash(npm link:*)",
-      "Bash(mnemaris:*)",
+      "Bash(memaris:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
@@ -53,7 +53,12 @@
       "Read(/Users/leonidbugaev/go/src/vow/**)",
       "Read(/Users/leonidbugaev/go/src/vow/**)",
       "Bash(npx wrangler:*)",
-      "Bash(bun:*)"
+      "Bash(bun:*)",
+      "mcp__code-search__extract_code",
+      "Bash(npx:*)",
+      "WebFetch(domain:probelabs.com)",
+      "Bash(npm deprecate:*)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []

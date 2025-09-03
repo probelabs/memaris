@@ -1,22 +1,22 @@
 {
-  "name": "@probelabs/mnemaris",
+  "name": "@probelabs/memaris",
   "version": "0.3.1",
   "description": "Stop re-teaching your AI. Turn past Claude Code sessions into persistent memory that follows you across projects.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "mnemaris": "dist/cli.js"
+    "memaris": "dist/cli.js"
   },
   "type": "module",
   "private": false,
-  "homepage": "https://probelabs.com/mnemaris/",
+  "homepage": "https://probelabs.com/memaris/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/probelabs/mnemaris.git"
+    "url": "git+https://github.com/probelabs/memaris.git"
   },
   "bugs": {
-    "url": "https://github.com/probelabs/mnemaris/issues"
+    "url": "https://github.com/probelabs/memaris/issues"
   },
   "files": [
     "dist/**/*",

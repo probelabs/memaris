@@ -6,7 +6,7 @@ import { analyzeCommand } from './cli/commands/analyze.js';
 const program = new Command();
 
 program
-  .name('mnemaris')
+  .name('memaris')
   .description('Analyze Claude Code conversation history for current project')
   .version('1.0.0');
 
@@ -24,10 +24,10 @@ program
 program.on('--help', () => {
   console.log('');
   console.log('Examples:');
-  console.log('  $ mnemaris analyze                    # Analyze current project');
-  console.log('  $ mnemaris analyze --debug           # Debug project detection');
-  console.log('  $ mnemaris analyze --depth 50        # Analyze recent 50 messages');
-  console.log('  $ mnemaris analyze --ai-powered      # AI-powered analysis (requires API key)');
+  console.log('  $ memaris analyze                    # Analyze current project');
+  console.log('  $ memaris analyze --debug           # Debug project detection');
+  console.log('  $ memaris analyze --depth 50        # Analyze recent 50 messages');
+  console.log('  $ memaris analyze --ai-powered      # AI-powered analysis (requires API key)');
   console.log('');
   console.log('Environment Variables:');
   console.log('  ANTHROPIC_API_KEY    Required for --ai-powered analysis');

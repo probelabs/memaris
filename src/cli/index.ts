@@ -142,7 +142,7 @@ Return format: A unified diff showing the changes you made, using proper diff fo
 const program = new Command();
 
 program
-  .name('mnemaris')
+  .name('memaris')
   .description('Analyze Claude Code conversation history to extract AI insights and improve future sessions')
   .version('0.3.0');
 
@@ -169,8 +169,8 @@ program
         console.log(`   Activity score: ${project.recentActivity.toFixed(0)}\n`);
       });
 
-      console.log('Use "mnemaris analyze <project-name>" to analyze a specific project');
-      console.log('Use "mnemaris analyze-all --recent" to analyze recent projects');
+      console.log('Use "memaris analyze <project-name>" to analyze a specific project');
+      console.log('Use "memaris analyze-all --recent" to analyze recent projects');
     } catch (error) {
       console.error('Failed to scan projects:', error);
       process.exit(1);
@@ -217,7 +217,7 @@ program
           projects.slice(0, 5).forEach((p, i) => {
             console.log(`  ${i + 1}. ${p.name} (${p.sessionCount} sessions)`);
           });
-          console.log('\nUse: mnemaris /path/to/project');
+          console.log('\nUse: memaris /path/to/project');
         }
         process.exit(1);
       }
@@ -333,7 +333,7 @@ program
             await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
           } else {
             console.log('\n👍 No changes applied. To apply automatically next time, run:');
-            console.log(`   mnemaris --all --update`);
+            console.log(`   memaris --all --update`);
           }
         } else {
           await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
@@ -497,7 +497,7 @@ program
             await updateClaudeMd(path || process.cwd(), aiResults, false, options.debug);
           } else {
             console.log('\n👍 No changes applied. To apply automatically next time, run:');
-            console.log(`   mnemaris --update`);
+            console.log(`   memaris --update`);
           }
         } else {
           // Direct update mode
@@ -712,13 +712,13 @@ program
 program.on('--help', () => {
   console.log('');
   console.log('Examples:');
-  console.log('  $ mnemaris                                          # Preview insights (no file changes)');
-  console.log('  $ mnemaris --update                                # Apply changes to CLAUDE.md');
-  console.log('  $ mnemaris --pattern-only                          # Use pattern-matching instead of AI');
-  console.log('  $ mnemaris --all-sessions --depth 500             # Deep analysis of all sessions');
-  console.log('  $ mnemaris /path/to/project                        # Analyze specific project');
-  console.log('  $ mnemaris scan                                    # Discover all available projects');
-  console.log('  $ mnemaris insights --type uncertainty            # Focus on specific insight types');
+  console.log('  $ memaris                                          # Preview insights (no file changes)');
+  console.log('  $ memaris --update                                # Apply changes to CLAUDE.md');
+  console.log('  $ memaris --pattern-only                          # Use pattern-matching instead of AI');
+  console.log('  $ memaris --all-sessions --depth 500             # Deep analysis of all sessions');
+  console.log('  $ memaris /path/to/project                        # Analyze specific project');
+  console.log('  $ memaris scan                                    # Discover all available projects');
+  console.log('  $ memaris insights --type uncertainty            # Focus on specific insight types');
   console.log('');
   console.log('Advanced Options:');
   console.log('  --update             Write changes to CLAUDE.md (default: preview only)');
