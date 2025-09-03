@@ -26,6 +26,8 @@ function hasSubstantialContent(message: ClaudeMessage): boolean {
 import { AIInsightAnalyzer } from '../analyzers/ai-insights.js';
 import { UserPatternAnalyzer } from '../analyzers/user-patterns.js';
 import { ClaudeCodeAnalyzer } from '../analyzers/claude-code-analysis.js';
+import { StoryAnalyzer, type ExtractedStory } from '../analyzers/story-analyzer.js';
+import { SessionCleanup } from '../utils/session-cleanup.js';
 import { ReportExporter } from '../exporters/report-generator.js';
 import type { AnalysisConfig, ClaudeMessage, AnalysisReport } from '../types/index.js';
 import { query } from '@anthropic-ai/claude-code';
@@ -182,9 +184,11 @@ program
   .argument('[path]', 'Path to project directory (defaults to current directory)')
   .description('Analyze Claude Code conversations and improve future AI sessions')
   .option('--pattern-only', 'Use pattern-matching analysis instead of AI-powered')
+  .option('--story', 'Extract development stories from sessions (requires AI)')
+  .option('--story-confidence <threshold>', 'Minimum confidence for story extraction (0-1, default: 0.6)', '0.6')
   .option('--update', 'Actually write the CLAUDE.md file (by default only preview)')
   .option('--all', 'Process all conversation history in batches (default: recent sessions only)')
-  .option('--depth <number>', 'Maximum number of messages to analyze (deprecated)', '0')
+  .option('--depth <number>', 'Maximum number of sessions to analyze in story mode, messages otherwise (deprecated)', '0')
   .option('--tokens <number>', 'Maximum tokens to analyze when not using --all (default: 50000)', '50000')
   .option('--batch-size <number>', 'Token batch size when using --all (default: 50000)', '50000')
   .option('--confidence <threshold>', 'Minimum confidence threshold for insights (0-1)', '0.5')
@@ -225,6 +229,13 @@ program
       console.log(`🎯 Match type: ${project.matchType}`);
       console.log(`📊 Found ${project.sessionCount} conversation sessions\n`);
       console.log(`📊 Analyzing project: ${project.name}`);
+
+      // Handle story mode
+      if (options.story) {
+        console.log('\n📚 Story extraction mode enabled\n');
+        await processStoryMode(project, options);
+        return;
+      }
 
       const allMessages: ClaudeMessage[] = [];
       let messageToSessionMap = new Map<ClaudeMessage, string>();
@@ -405,11 +416,23 @@ program
 
       let insights: any[] = [];
       let patterns: any[] = [];
+      let sessionCleanup: SessionCleanup | undefined;
         
       if (!options.patternOnly) {
         // Use Claude Code SDK analysis by default
         console.log('🚀 Using AI-powered analysis...');
         const claudeAnalyzer = new ClaudeCodeAnalyzer();
+        
+        // Initialize session cleanup for regular analysis
+        sessionCleanup = new SessionCleanup(project.path);
+        sessionCleanup.cleanupExistingPollution();
+        
+        // Refresh sessions list after cleanup to exclude deleted files
+        project.sessions = project.sessions.filter((session: any) => {
+          const fs = require('fs');
+          return fs.existsSync(session.filePath);
+        });
+        
         // Parse exclude patterns if provided
         const excludePatterns = options.excludePatterns ? 
           options.excludePatterns.split(',').map((p: string) => p.trim()) : 
@@ -435,13 +458,14 @@ program
             batchSize: batchSizeLimit,
             excludePatterns,
             debugMessages: options.debugMessages,
-            messageToSessionMap
+            messageToSessionMap,
+            sessionCleanup
           };
           aiResults = await processBatches(allMessages, batchOptions);
         } else {
           console.log('🚀 Using single analysis (tokens within limits)...');
           // Use single analysis for smaller datasets
-          aiResults = await claudeAnalyzer.analyzeConversation(allMessages, effectiveDepth, options.debugMessages, messageToSessionMap, excludePatterns);
+          aiResults = await claudeAnalyzer.analyzeConversation(allMessages, effectiveDepth, options.debugMessages, messageToSessionMap, excludePatterns, sessionCleanup);
         }
           
         console.log('\n📊 AI Analysis Results:');
@@ -543,6 +567,11 @@ program
         }
       }
 
+      // Clean up sessions created during analysis (only for AI-powered analysis)
+      if (!options.patternOnly && sessionCleanup) {
+        sessionCleanup.cleanup();
+      }
+      
       if (options.update) {
         console.log('\n✨ Analysis complete! Your CLAUDE.md has been updated with AI insights.');
       } else if (!options.patternOnly) {
@@ -709,11 +738,130 @@ program
     }
   });
 
+async function processStoryMode(project: any, options: any): Promise<void> {
+  const storyConfidence = parseFloat(options.storyConfidence);
+  const maxSessions = parseInt(options.depth) || (options.all ? Infinity : 10);
+  
+  // Initialize story analyzer (uses Claude Code SDK)
+  const storyAnalyzer = new StoryAnalyzer();
+  
+  // Initialize session cleanup
+  const sessionCleanup = new SessionCleanup(project.path);
+  
+  // Clean up any existing memaris pollution first
+  sessionCleanup.cleanupExistingPollution();
+  
+  // Refresh sessions list after cleanup to exclude deleted files
+  project.sessions = project.sessions.filter((session: any) => {
+    const fs = require('fs');
+    return fs.existsSync(session.filePath);
+  });
+
+  console.log(`🎯 Analyzing up to ${maxSessions} sessions for stories (confidence >= ${storyConfidence})\n`);
+
+  // Get sessions, sorted chronologically (oldest first for proper story flow)
+  const sessions = project.sessions.sort((a: any, b: any) => {
+    return new Date(a.lastModified).getTime() - new Date(b.lastModified).getTime();
+  });
+
+  const sessionsToProcess = options.all ? sessions : sessions.slice(-maxSessions);
+  console.log(`📁 Processing ${sessionsToProcess.length} sessions chronologically (oldest to newest)...\n`);
+
+  const stories: ExtractedStory[] = [];
+  let processedCount = 0;
+
+  for (const session of sessionsToProcess) {
+    processedCount++;
+    const sessionName = session.name || session.filePath.split('/').pop()?.replace('.jsonl', '') || `session-${processedCount}`;
+    
+    try {
+      console.log(`[${processedCount}/${sessionsToProcess.length}] Analyzing session: ${sessionName}`);
+
+      // Parse session messages
+      const messages = JSONLParser.parseSessionFile(session.filePath);
+      if (messages.length === 0) {
+        console.log('   ⏭️  Skipping empty session\n');
+        continue;
+      }
+
+      // Analyze session (combines detection, extraction, and merge decision)
+      console.log('   🔍 Analyzing session with AI...');
+      const previousStory = stories.length > 0 ? stories[stories.length - 1] : undefined;
+      const extractedStory = await storyAnalyzer.analyzeSession(messages, sessionName, previousStory, sessionCleanup);
+
+      if (!extractedStory) {
+        console.log('   ⏭️  Session did not meet confidence threshold\n');
+        continue;
+      }
+
+      console.log(`   📊 Confidence: ${(extractedStory.confidence * 100).toFixed(0)}%`);
+
+      // Handle merging decision from AI response
+      if (extractedStory.mergeWithPrevious && previousStory) {
+        // Merge with the previous story
+        const lastStoryIndex = stories.length - 1;
+        stories[lastStoryIndex].content = extractedStory.content;
+        stories[lastStoryIndex].sessionId += ` + ${extractedStory.sessionId}`;
+        stories[lastStoryIndex].tokenCount += extractedStory.tokenCount;
+        // Keep the higher confidence
+        stories[lastStoryIndex].confidence = Math.max(stories[lastStoryIndex].confidence, extractedStory.confidence);
+        console.log('   🔗 Merged with previous story');
+      } else {
+        // Add as new story
+        stories.push(extractedStory);
+        console.log('   📝 Added as new story');
+      }
+
+      console.log('   ✅ Story processed\n');
+
+      // Add small delay to avoid overwhelming the API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+    } catch (error) {
+      console.error(`   ❌ Error processing session ${sessionName}:`, error);
+      console.log('   ⏭️  Continuing with next session\n');
+      continue;
+    }
+  }
+
+  // Display results
+  console.log('📚 Story Extraction Complete!\n');
+  console.log(`Found ${stories.length} stories from ${processedCount} sessions:\n`);
+
+  if (stories.length === 0) {
+    console.log('No stories met the confidence threshold. Try lowering --story-confidence or check different sessions.');
+    return;
+  }
+
+  // Display each story
+  stories.forEach((story, index) => {
+    console.log('='.repeat(80));
+    console.log(`📖 Story ${index + 1}`);
+    console.log(`📁 Session(s): ${story.sessionId}`);
+    console.log(`📊 Confidence: ${(story.confidence * 100).toFixed(0)}%`);
+    console.log(`🔤 Tokens: ${story.tokenCount.toLocaleString()}`);
+    console.log('='.repeat(80));
+    console.log();
+    console.log(story.content);
+    console.log();
+    console.log();
+  });
+
+  console.log(`🎉 Extracted ${stories.length} development stories!`);
+  console.log('💡 These stories can be used as the foundation for blog posts or technical articles.');
+  
+  // Clean up sessions created during analysis
+  sessionCleanup.cleanup();
+}
+
 program.on('--help', () => {
   console.log('');
   console.log('Examples:');
   console.log('  $ memaris                                          # Preview insights (no file changes)');
   console.log('  $ memaris --update                                # Apply changes to CLAUDE.md');
+  console.log('  $ memaris --story                                 # Extract development stories');
+  console.log('  $ memaris --story --all                           # Extract stories from all sessions');
+  console.log('  $ memaris --story --depth 5                      # Extract from 5 most recent sessions');
   console.log('  $ memaris --pattern-only                          # Use pattern-matching instead of AI');
   console.log('  $ memaris --all-sessions --depth 500             # Deep analysis of all sessions');
   console.log('  $ memaris /path/to/project                        # Analyze specific project');

@@ -58,7 +58,8 @@
       "Bash(npx:*)",
       "WebFetch(domain:probelabs.com)",
       "Bash(npm deprecate:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Read(/Users/leonidbugaev/.claude/projects/-Users-leonidbugaev-go-src-claude-story/**)"
     ],
     "deny": [],
     "ask": []

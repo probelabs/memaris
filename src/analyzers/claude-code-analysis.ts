@@ -2,6 +2,7 @@ import { query } from '@anthropic-ai/claude-code';
 import cliProgress from 'cli-progress';
 import type { ClaudeMessage } from '../types/index.js';
 import { JSONLParser } from '../parsers/jsonl-parser.js';
+import { SessionCleanup } from '../utils/session-cleanup.js';
 
 interface AIAnalysisResult {
   mistakes: Array<{
@@ -177,7 +178,8 @@ Analyze the entire AI–human development session transcript (including any visi
     maxDepth: number = 100,
     debug: boolean = false,
     messageToSessionMap?: Map<ClaudeMessage, string>,
-    excludePatterns?: string[]
+    excludePatterns?: string[],
+    sessionCleanup?: SessionCleanup
   ): Promise<AIAnalysisResult> {
     
     console.log('🚀 Starting Claude Code SDK analysis...');
@@ -225,19 +227,32 @@ Analyze the entire AI–human development session transcript (including any visi
       
       this.progressBar.update(10, { status: 'Sending request to AI (~1 min)...' });
       
+      // Track timestamp before making the query to detect new session
+      const beforeQueryTime = Date.now();
+      
       // Use Claude Code SDK - it handles authentication automatically
       const options = {
         allowedTools: [], // No tools needed for analysis
         maxTurns: 1,
         model: 'claude-sonnet-4-20250514',
         verbose: false,
-        pathToClaudeCodeExecutable: '/Users/leonidbugaev/.local/bin/claude'
+        pathToClaudeCodeExecutable: require.resolve('@anthropic-ai/claude-code/cli.js')
       };
       
       const response = query({
         prompt: analysisPrompt,
         options
       });
+      
+      // Try to detect the created session for cleanup
+      if (sessionCleanup) {
+        setTimeout(() => {
+          const sessionId = sessionCleanup.findRecentSession(beforeQueryTime);
+          if (sessionId) {
+            sessionCleanup.trackSession(sessionId);
+          }
+        }, 100); // Small delay to ensure file is written
+      }
 
       this.progressBar.update(30, { status: 'Waiting for AI analysis...' });
 

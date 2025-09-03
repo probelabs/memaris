@@ -1,5 +1,6 @@
 import type { ClaudeMessage } from '../types/index.js';
 import { ClaudeCodeAnalyzer } from '../analyzers/claude-code-analysis.js';
+import { SessionCleanup } from './session-cleanup.js';
 
 // Helper function to estimate tokens in a message (roughly 4 chars = 1 token)
 export function estimateTokens(message: ClaudeMessage): number {
@@ -42,6 +43,7 @@ export interface BatchingOptions {
   excludePatterns?: string[];
   debugMessages?: boolean;
   messageToSessionMap?: Map<ClaudeMessage, string>;
+  sessionCleanup?: SessionCleanup;
 }
 
 export async function processBatches(
@@ -99,7 +101,8 @@ export async function processBatches(
       batchMessages.length, 
       options.debugMessages, 
       options.messageToSessionMap, 
-      options.excludePatterns
+      options.excludePatterns,
+      options.sessionCleanup
     );
     
     batchResults.push(batchResult);
