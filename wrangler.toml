@@ -3,6 +3,16 @@ main = "worker.js"
 compatibility_date = "2025-01-14"
 
 # Routes configuration for probelabs.com subdirectory
+# New memaris routes
+[[routes]]
+pattern = "probelabs.com/memaris"
+zone_name = "probelabs.com"
+
+[[routes]]
+pattern = "probelabs.com/memaris/*"
+zone_name = "probelabs.com"
+
+# Legacy mnemaris routes (handled by worker for 301 redirects)
 [[routes]]
 pattern = "probelabs.com/mnemaris"
 zone_name = "probelabs.com"

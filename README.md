@@ -1,8 +1,8 @@
 <div align="center">
 
-# Mnemaris
+# Memaris
 
-![Mnemaris](mnemaris.gif)
+![Memaris](memaris.gif)
 
 **Stop re-teaching your AI. Turn past sessions into persistent memory.**
 
@@ -10,19 +10,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Part of Probe Ecosystem](https://img.shields.io/badge/Probe-Ecosystem-00ff88)](https://probelabs.com)
 
-[Website](https://probelabs.com/mnemaris) • [Documentation](#-commands) • [NPM Package](https://www.npmjs.com/package/@probelabs/mnemaris)
+[Website](https://probelabs.com/memaris) • [Documentation](#-commands) • [NPM Package](https://www.npmjs.com/package/@probelabs/mnemaris)
 
 </div>
 
 ---
 
-## What is Mnemaris?
+## What is Memaris?
 
-Mnemaris analyzes your Claude Code conversation history to extract patterns, preferences, and lessons learned. It turns every correction, rejected approach, and successful pattern into permanent memory that follows you across sessions.
+Memaris analyzes your Claude Code conversation history to extract patterns, preferences, and lessons learned. It turns every correction, rejected approach, and successful pattern into permanent memory that follows you across sessions.
 
 **The Problem:** Every time you start a new Claude Code session, you're teaching the same preferences again. "Don't use sudo with npm." "Prefer async/await." "Always add error boundaries."
 
-**The Solution:** Mnemaris reads your past sessions, identifies what worked and what didn't, then creates a personalized `CLAUDE.md` file with instructions tailored to your coding style.
+**The Solution:** Memaris reads your past sessions, identifies what worked and what didn't, then creates a personalized `CLAUDE.md` file with instructions tailored to your coding style.
 
 ## 🚀 Quick Start
 
@@ -37,7 +37,7 @@ npx -y @probelabs/mnemaris
 npx -y @probelabs/mnemaris --update
 ```
 
-That's it! No installation needed - just run and go. Mnemaris will analyze your Claude Code history and generate personalized instructions.
+That's it! No installation needed - just run and go. Memaris will analyze your Claude Code history and generate personalized instructions.
 
 > **💡 Pro tip:** The first command previews what insights will be added. Use `--update` to actually modify your CLAUDE.md file.
 
@@ -203,7 +203,7 @@ npx -y @probelabs/mnemaris --all --batch-size 25000 --update
 
 ## 🌐 Part of the Probe Ecosystem
 
-Mnemaris is part of the [Probe ecosystem](https://probelabs.com)—tools dedicated to improving human and AI collaboration in development.
+Memaris is part of the [Probe ecosystem](https://probelabs.com)—tools dedicated to improving human and AI collaboration in development.
 
 - **[Probe](https://probelabs.com)** - Code search that understands context
 - **[Vow](https://probelabs.com/vow)** - Accountability gates for AI agents
@@ -223,4 +223,4 @@ Questions or feedback? Reach out at [hello@probelabs.com](mailto:hello@probelabs
 
 ---
 
-*Mnemaris: From the ancient Greek μνήμη (mneme) meaning memory - helping AI remember and learn from every conversation.*
+*Memaris: From the ancient Greek μνήμη (mneme) meaning memory - helping AI remember and learn from every conversation.*
