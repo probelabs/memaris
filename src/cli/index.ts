@@ -800,11 +800,11 @@ async function processStoryMode(project: any, options: any): Promise<void> {
       if (extractedStory.mergeWithPrevious && previousStory) {
         // Merge with the previous story
         const lastStoryIndex = stories.length - 1;
-        stories[lastStoryIndex].content = extractedStory.content;
-        stories[lastStoryIndex].sessionId += ` + ${extractedStory.sessionId}`;
-        stories[lastStoryIndex].tokenCount += extractedStory.tokenCount;
+        stories[lastStoryIndex]!.content = extractedStory.content;
+        stories[lastStoryIndex]!.sessionId += ` + ${extractedStory.sessionId}`;
+        stories[lastStoryIndex]!.tokenCount += extractedStory.tokenCount;
         // Keep the higher confidence
-        stories[lastStoryIndex].confidence = Math.max(stories[lastStoryIndex].confidence, extractedStory.confidence);
+        stories[lastStoryIndex]!.confidence = Math.max(stories[lastStoryIndex]!.confidence, extractedStory.confidence);
         console.log('   🔗 Merged with previous story');
       } else {
         // Add as new story
