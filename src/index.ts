@@ -1,7 +1,7 @@
 export { ProjectDiscovery } from './parsers/project-discovery.js';
 export { JSONLParser } from './parsers/jsonl-parser.js';
-export { AIInsightAnalyzer } from './analyzers/ai-insights.js';
-export { UserPatternAnalyzer } from './analyzers/user-patterns.js';
+export { ClaudeCodeAnalyzer } from './analyzers/claude-code-analysis.js';
+export { StoryAnalyzer } from './analyzers/story-analyzer.js';
 export { ReportExporter } from './exporters/report-generator.js';
 
 export type {
@@ -19,8 +19,7 @@ export type {
 export async function analyzeProject(projectName: string) {
   const { ProjectDiscovery } = await import('./parsers/project-discovery.js');
   const { JSONLParser } = await import('./parsers/jsonl-parser.js');
-  const { AIInsightAnalyzer } = await import('./analyzers/ai-insights.js');
-  const { UserPatternAnalyzer } = await import('./analyzers/user-patterns.js');
+  const { ClaudeCodeAnalyzer } = await import('./analyzers/claude-code-analysis.js');
 
   const project = await ProjectDiscovery.getProjectInfo(projectName);
   if (!project) {
@@ -33,13 +32,13 @@ export async function analyzeProject(projectName: string) {
     allMessages.push(...messages);
   }
 
-  const insights = AIInsightAnalyzer.analyzeConversation(allMessages);
-  const patterns = UserPatternAnalyzer.analyzeUserPatterns(allMessages);
+  // Use AI-powered analysis
+  const analyzer = new ClaudeCodeAnalyzer();
+  const results = await analyzer.analyzeConversation(allMessages);
 
   return {
     project,
-    insights,
-    patterns,
+    ...results,
     messages: allMessages
   };
 }
