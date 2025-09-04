@@ -1,6 +1,6 @@
 {
   "name": "@probelabs/memaris",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "Stop re-teaching your AI. Turn past Claude Code sessions into persistent memory that follows you across projects.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
