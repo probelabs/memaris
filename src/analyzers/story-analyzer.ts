@@ -90,7 +90,7 @@ export class StoryAnalyzer {
         maxTurns: 1,
         model: 'claude-sonnet-4-20250514',
         verbose: false,
-        pathToClaudeCodeExecutable: 'claude'
+        pathToClaudeCodeExecutable: require.resolve('@anthropic-ai/claude-code/cli.js')
       };
       
       const response = query({
