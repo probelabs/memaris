@@ -236,6 +236,7 @@ Analyze the entire AI–human development session transcript (including any visi
         maxTurns: 1,
         model: 'claude-sonnet-4-20250514',
         verbose: false,
+        maxTokens: 8192, // Increase to Claude Sonnet maximum
         pathToClaudeCodeExecutable: require.resolve('@anthropic-ai/claude-code/cli.js')
       };
       
@@ -310,7 +311,12 @@ Analyze the entire AI–human development session transcript (including any visi
           cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
         } else {
           console.error('❌ No JSON braces found in response:');
-          console.error(result);
+          console.error('=== RAW AI RESPONSE (First 2000 chars) ===');
+          console.error(result.substring(0, 2000));
+          if (result.length > 2000) {
+            console.error('... [truncated ' + (result.length - 2000) + ' more characters]');
+          }
+          console.error('=== END RAW RESPONSE ===');
           throw new Error('Could not find valid JSON braces in Claude\'s response');
         }
         
@@ -423,8 +429,15 @@ Analyze the entire AI–human development session transcript (including any visi
           
         } catch (repairError) {
           console.error('❌ Failed to parse JSON response:');
-          console.error('Raw response:');
+          console.error('=== RAW AI RESPONSE (Full) ===');
           console.error(result);
+          console.error('=== END RAW RESPONSE ===');
+          console.error('=== CLEANED JSON ATTEMPT ===');
+          console.error(cleanJson.substring(0, 1000));
+          if (cleanJson.length > 1000) {
+            console.error('... [truncated ' + (cleanJson.length - 1000) + ' more characters]');
+          }
+          console.error('=== END CLEANED JSON ===');
           console.error('Parse error:', (parseError as Error).message);
           console.error('Repair attempt also failed:', (repairError as Error).message);
           throw new Error('Could not extract valid JSON from Claude\'s response');

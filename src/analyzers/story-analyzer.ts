@@ -90,6 +90,7 @@ export class StoryAnalyzer {
         maxTurns: 1,
         model: 'claude-sonnet-4-20250514',
         verbose: false,
+        maxTokens: 8192, // Increase to Claude Sonnet maximum
         pathToClaudeCodeExecutable: require.resolve('@anthropic-ai/claude-code/cli.js')
       };
       
@@ -378,7 +379,12 @@ REQUIREMENTS:
         cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
       } else {
         console.error('❌ No JSON braces found in story analysis response:');
-        console.error(responseText);
+        console.error('=== RAW AI RESPONSE (First 2000 chars) ===');
+        console.error(responseText.substring(0, 2000));
+        if (responseText.length > 2000) {
+          console.error('... [truncated ' + (responseText.length - 2000) + ' more characters]');
+        }
+        console.error('=== END RAW RESPONSE ===');
         throw new Error('Could not find valid JSON braces in Claude\'s response');
       }
       
@@ -392,8 +398,15 @@ REQUIREMENTS:
       
     } catch (error) {
       console.error('Failed to parse story analysis response:', error);
-      console.error('Raw response:', responseText);
-      console.error('Cleaned JSON attempt:', cleanJson);
+      console.error('=== RAW AI RESPONSE (Full) ===');
+      console.error(responseText);
+      console.error('=== END RAW RESPONSE ===');
+      console.error('=== CLEANED JSON ATTEMPT ===');
+      console.error(cleanJson.substring(0, 1000));
+      if (cleanJson.length > 1000) {
+        console.error('... [truncated ' + (cleanJson.length - 1000) + ' more characters]');
+      }
+      console.error('=== END CLEANED JSON ===');
       return {
         story: '',
         confidence: 0,
