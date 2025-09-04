@@ -236,6 +236,7 @@ Analyze the entire AI–human development session transcript (including any visi
         maxTurns: 1,
         model: 'claude-sonnet-4-20250514',
         verbose: false,
+        pathToClaudeCodeExecutable: 'claude'
       };
       
       const response = query({

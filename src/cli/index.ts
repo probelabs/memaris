@@ -108,6 +108,7 @@ Return format: A unified diff showing the changes you made, using proper diff fo
         maxTurns: 20, // Allow many turns for complex file operations
         model: "claude-sonnet-4-20250514",
         cwd: projectPath, // Set working directory
+        pathToClaudeCodeExecutable: "claude"
       },
     });
 
