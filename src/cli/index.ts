@@ -59,9 +59,9 @@ async function updateClaudeMd(
     existingContent = readFileSync(claudeMdPath, "utf-8");
   }
 
-  // Create prompt for Claude Code SDK to update CLAUDE.md
+  // Create prompt for AI analysis to generate CLAUDE.md content
   const updatePrompt = `
-Naturally merge the conversation analysis insights into this CLAUDE.md file. Add only what is specific enough and actionable. Follow common sense - don't repeat yourself or add obvious things. If the file doesn't exist, create it.
+Merge the conversation analysis insights into a CLAUDE.md file. Add only what is specific enough and actionable. Follow common sense - don't repeat yourself or add obvious things.
 
 <current-claude-md>
 ${existingContent || "[File does not exist yet]"}
@@ -84,30 +84,18 @@ Guidelines for merging:
 - Use clear, direct language that other AIs can easily follow
 - Base all updates exclusively on the data provided within the <analysis-data> XML tag above
 
-IMPORTANT: You MUST actually use the tools to update the file, not just describe what you would do.
+IMPORTANT: Return ONLY the complete CLAUDE.md file content, nothing else. No explanations, no diff format, just the raw file content that should be written to CLAUDE.md.
 
-Step by step:
-1. First, use the Read tool to check if CLAUDE.md exists in the current directory
-2. Then use the Write tool to create or Edit tool to update the CLAUDE.md file with the merged insights
-3. After making the file changes, return a summary in unified diff format
-
-You must actually execute the Read and Write/Edit tools, not just talk about them.
-
-Return format: A unified diff showing the changes you made, using proper diff format with:
-- File headers: --- a/CLAUDE.md and +++ b/CLAUDE.md
-- Hunk headers with line numbers: @@ -start,count +start,count @@
-- Lines starting with - for removals, + for additions, and space for context
-- If no changes are needed, return "No changes needed"
+If no changes are needed, return exactly: "NO_CHANGES_NEEDED"
 `;
 
   try {
     const response = query({
       prompt: updatePrompt,
       options: {
-        allowedTools: ["*"], // Allow all tools including file operations
-        maxTurns: 20, // Allow many turns for complex file operations
+        allowedTools: [], // No tools needed - just text generation
+        maxTurns: 1,
         model: "claude-sonnet-4-20250514",
-        cwd: projectPath, // Set working directory
         pathToClaudeCodeExecutable: require.resolve('@anthropic-ai/claude-code/cli.js')
       },
     });
@@ -130,22 +118,38 @@ Return format: A unified diff showing the changes you made, using proper diff fo
       }
     }
 
-    if (dryRun) {
-      // In preview mode, don't actually update files, just return what would happen
-      return result;
-    } else {
-      // The Claude Code agent has already updated the file, show the diff summary
-      if (result.trim() === "No changes needed") {
+    const cleanResult = result.trim();
+    
+    if (cleanResult === "NO_CHANGES_NEEDED") {
+      if (!dryRun) {
         console.log("\n✅ No changes needed - CLAUDE.md is already up to date");
-      } else {
-        console.log("\n🔍 Changes applied to CLAUDE.md:");
-        console.log("─".repeat(80));
-        console.log(result);
-        console.log("─".repeat(80));
-        console.log(`\n✅ CLAUDE.md updated successfully at: ${claudeMdPath}`);
       }
+      return "No changes needed";
+    }
 
-      return result;
+    if (dryRun) {
+      // In preview mode, show what would be written but don't write
+      console.log("\n📄 Preview of CLAUDE.md content:");
+      console.log("─".repeat(80));
+      console.log(cleanResult);
+      console.log("─".repeat(80));
+      return "Preview shown above";
+    } else {
+      // Actually write the file using Node.js fs
+      writeFileSync(claudeMdPath, cleanResult, 'utf-8');
+      
+      // Generate a simple diff summary
+      const oldLines = existingContent ? existingContent.split('\n').length : 0;
+      const newLines = cleanResult.split('\n').length;
+      
+      console.log("\n🔍 CLAUDE.md has been updated:");
+      console.log("─".repeat(80));
+      console.log(`📄 File: ${claudeMdPath}`);
+      console.log(`📊 Lines: ${oldLines} → ${newLines} (${newLines - oldLines >= 0 ? '+' : ''}${newLines - oldLines})`);
+      console.log("─".repeat(80));
+      console.log(`\n✅ CLAUDE.md updated successfully at: ${claudeMdPath}`);
+      
+      return `Updated ${claudeMdPath} with ${newLines} lines`;
     }
   } catch (error) {
     console.error("❌ Failed to update CLAUDE.md:", error);
